@@ -21,21 +21,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         bindState()
         telemetryStore.start(preferences: preferences)
         updateStatusItems()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
+            self?.showPopover()
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
         telemetryStore.stop()
     }
 
-    @objc private func togglePopover(_ sender: Any?) {
-        guard let button = sender as? NSStatusBarButton ?? statusItem?.button else { return }
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        showPopover()
+        return true
+    }
 
+    @objc private func togglePopover(_ sender: Any?) {
         if popover.isShown {
             popover.performClose(sender)
         } else {
-            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-            popover.contentViewController?.view.window?.makeKey()
+            showPopover(from: sender)
         }
+    }
+
+    private func showPopover(from sender: Any? = nil) {
+        guard let button = sender as? NSStatusBarButton ?? statusItem?.button else { return }
+        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        popover.contentViewController?.view.window?.makeKey()
+        NSApp.activate(ignoringOtherApps: true)
     }
 
     func showPreferences() {
@@ -150,7 +162,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             statusItem?.button?.title = "idi paused"
         } else if preferences.menuBarDisplayStyle == .modules {
             let modules = telemetryStore.visibleModules.prefix(3).map { "\($0.shortName) \($0.value)" }.joined(separator: "  ")
-            statusItem?.button?.title = modules.isEmpty ? "\(statusPrefix) idi" : "\(statusPrefix) \(modules)"
+            statusItem?.button?.title = modules.isEmpty ? "\(statusPrefix) idi" : "\(statusPrefix) idi  \(modules)"
         } else {
             statusItem?.button?.title = "\(statusPrefix) \(telemetryStore.statusTitle)"
         }
