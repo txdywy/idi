@@ -48,11 +48,21 @@ final class PreferencesModel: ObservableObject {
     @Published var diskWarningThreshold: Double {
         didSet { save() }
     }
+    @Published var batteryLowThreshold: Double {
+        didSet { save() }
+    }
+    @Published var sensorHighThreshold: Double {
+        didSet { save() }
+    }
+    @Published var moduleOrder: [String] {
+        didSet { save() }
+    }
 
     let refreshIntervals: [TimeInterval] = [1.0, 2.0, 5.0]
     let availableModules = ["CPU", "Memory", "Network", "Disk", "Battery", "GPU", "Sensors", "Weather", "Time", "Apps"]
 
     private static let defaultEnabledModules = ["CPU", "Memory", "Network", "Disk", "Battery", "GPU", "Sensors", "Time", "Apps"]
+    private static let defaultModuleOrder = ["Battery", "CPU", "Memory", "Disk", "Network", "GPU", "Sensors", "Apps", "Time", "Weather"]
 
     private let defaults: UserDefaults
 
@@ -68,6 +78,29 @@ final class PreferencesModel: ObservableObject {
         cpuWarningThreshold = defaults.object(forKey: Keys.cpuWarningThreshold) as? Double ?? 0.78
         memoryWarningThreshold = defaults.object(forKey: Keys.memoryWarningThreshold) as? Double ?? 0.78
         diskWarningThreshold = defaults.object(forKey: Keys.diskWarningThreshold) as? Double ?? 0.86
+        batteryLowThreshold = defaults.object(forKey: Keys.batteryLowThreshold) as? Double ?? 0.2
+        sensorHighThreshold = defaults.object(forKey: Keys.sensorHighThreshold) as? Double ?? 0.85
+        let restoredOrder = defaults.stringArray(forKey: Keys.moduleOrder) ?? Self.defaultModuleOrder
+        moduleOrder = Self.normalizedOrder(restoredOrder, availableModules: Self.defaultModuleOrder)
+    }
+
+    func orderedModules(_ modules: [TelemetryModule]) -> [TelemetryModule] {
+        modules.sorted { orderedIndex(for: $0.name) < orderedIndex(for: $1.name) }
+    }
+
+    func orderedModuleNames(_ modules: some Sequence<String>) -> [String] {
+        modules.sorted { orderedIndex(for: $0) < orderedIndex(for: $1) }
+    }
+
+    func moveModule(_ module: String, direction: Int) {
+        guard let index = moduleOrder.firstIndex(of: module) else { return }
+        let nextIndex = max(0, min(moduleOrder.count - 1, index + direction))
+        guard nextIndex != index else { return }
+        moduleOrder.swapAt(index, nextIndex)
+    }
+
+    func orderedIndex(for module: String) -> Int {
+        moduleOrder.firstIndex(of: module) ?? Int.max
     }
 
     func togglePause() {
@@ -103,6 +136,14 @@ final class PreferencesModel: ObservableObject {
         defaults.set(cpuWarningThreshold, forKey: Keys.cpuWarningThreshold)
         defaults.set(memoryWarningThreshold, forKey: Keys.memoryWarningThreshold)
         defaults.set(diskWarningThreshold, forKey: Keys.diskWarningThreshold)
+        defaults.set(batteryLowThreshold, forKey: Keys.batteryLowThreshold)
+        defaults.set(sensorHighThreshold, forKey: Keys.sensorHighThreshold)
+        defaults.set(Self.normalizedOrder(moduleOrder, availableModules: availableModules), forKey: Keys.moduleOrder)
+    }
+
+    private static func normalizedOrder(_ order: [String], availableModules: [String]) -> [String] {
+        let known = order.filter { availableModules.contains($0) }
+        return known + availableModules.filter { !known.contains($0) }
     }
 }
 
@@ -117,4 +158,7 @@ private enum Keys {
     static let cpuWarningThreshold = "cpuWarningThreshold"
     static let memoryWarningThreshold = "memoryWarningThreshold"
     static let diskWarningThreshold = "diskWarningThreshold"
+    static let batteryLowThreshold = "batteryLowThreshold"
+    static let sensorHighThreshold = "sensorHighThreshold"
+    static let moduleOrder = "moduleOrder"
 }

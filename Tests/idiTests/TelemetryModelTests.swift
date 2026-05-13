@@ -40,6 +40,9 @@ final class TelemetryModelTests: XCTestCase {
         preferences.cpuWarningThreshold = 0.82
         preferences.memoryWarningThreshold = 0.83
         preferences.diskWarningThreshold = 0.9
+        preferences.batteryLowThreshold = 0.18
+        preferences.sensorHighThreshold = 0.88
+        preferences.moveModule("Weather", direction: -1)
         preferences.toggleModule("Weather")
         preferences.toggleSeparateMenuBarModule("CPU")
 
@@ -52,6 +55,9 @@ final class TelemetryModelTests: XCTestCase {
         XCTAssertEqual(restored.cpuWarningThreshold, 0.82, accuracy: 0.001)
         XCTAssertEqual(restored.memoryWarningThreshold, 0.83, accuracy: 0.001)
         XCTAssertEqual(restored.diskWarningThreshold, 0.9, accuracy: 0.001)
+        XCTAssertEqual(restored.batteryLowThreshold, 0.18, accuracy: 0.001)
+        XCTAssertEqual(restored.sensorHighThreshold, 0.88, accuracy: 0.001)
+        XCTAssertLessThan(restored.orderedIndex(for: "Weather"), restored.orderedIndex(for: "Time"))
         XCTAssertTrue(restored.enabledModules.contains("Weather"))
         XCTAssertTrue(restored.separateMenuBarModules.contains("CPU"))
         XCTAssertTrue(restored.enabledModules.contains("CPU"))
@@ -65,6 +71,35 @@ final class TelemetryModelTests: XCTestCase {
     func testModuleIDIsStableName() {
         let module = TelemetryModule(name: "CPU", symbol: "cpu", value: "20%", detail: "ok", accent: .blue, samples: [0.2], healthState: .normal, detailRows: [])
         XCTAssertEqual(module.id, "CPU")
+    }
+
+    func testTelemetryHistorySummaryUsesWindow() {
+        let now = Date()
+        let summary = TelemetryHistorySummary(samples: [
+            TelemetryHistorySample(date: now.addingTimeInterval(-400), value: 0.1, healthState: .normal),
+            TelemetryHistorySample(date: now.addingTimeInterval(-20), value: 0.4, healthState: .normal),
+            TelemetryHistorySample(date: now, value: 0.8, healthState: .warning)
+        ], since: now.addingTimeInterval(-60))
+
+        XCTAssertEqual(summary.windowSamples.count, 2)
+        XCTAssertEqual(summary.min, 0.4, accuracy: 0.001)
+        XCTAssertEqual(summary.peak, 0.8, accuracy: 0.001)
+        XCTAssertEqual(summary.average, 0.6, accuracy: 0.001)
+    }
+
+    @MainActor
+    func testBatteryLowThresholdUsesRemainingPercent() {
+        let suiteName = "idi.tests.preferences.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let preferences = PreferencesModel(defaults: defaults)
+        preferences.batteryLowThreshold = 0.2
+
+        let lowBattery = TelemetryModule(name: "Battery", symbol: "battery.25percent", value: "10%", detail: "On battery", accent: .mint, samples: [0.9], healthState: .critical, detailRows: [])
+        let healthyBattery = TelemetryModule(name: "Battery", symbol: "battery.75percent", value: "85%", detail: "On battery", accent: .mint, samples: [0.15], healthState: .normal, detailRows: [])
+
+        XCTAssertTrue(NotificationController.exceedsThreshold(module: lowBattery, preferences: preferences))
+        XCTAssertFalse(NotificationController.exceedsThreshold(module: healthyBattery, preferences: preferences))
     }
 
     func testSnapshotSummaryTextIncludesVisibleTelemetry() {

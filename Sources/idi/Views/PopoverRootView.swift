@@ -12,7 +12,7 @@ struct PopoverRootView: View {
     let quit: () -> Void
 
     private var visibleModules: [TelemetryModule] {
-        telemetryStore.visibleModules.sorted { $0.displayOrder < $1.displayOrder }
+        telemetryStore.visibleModules
     }
 
     private var selectedModule: TelemetryModule? {
@@ -115,10 +115,11 @@ struct PopoverRootView: View {
         if let module = selectedModule {
             VStack(alignment: .leading, spacing: 10) {
                 hero(for: module)
-                DenseChart(samples: module.samples, color: module.accent.color)
+                DenseChart(samples: telemetryStore.historySummary(for: module.name).values.isEmpty ? module.samples : telemetryStore.historySummary(for: module.name).values, color: module.accent.color)
                     .frame(height: 150)
                     .background(Color.black.opacity(0.24), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
                     .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(module.accent.color.opacity(0.18), lineWidth: 1))
+                historyTiles(for: module)
                 summaryTiles(for: module)
                 detailRows(for: module)
             }
@@ -172,6 +173,16 @@ struct PopoverRootView: View {
                     .font(.system(.caption2, design: .monospaced).weight(.semibold))
                     .foregroundStyle(.white.opacity(0.52))
             }
+        }
+    }
+
+    private func historyTiles(for module: TelemetryModule) -> some View {
+        let summary = telemetryStore.historySummary(for: module.name)
+        return HStack(spacing: 8) {
+            MetricTile(title: "5M MIN", value: percent(summary.min), color: module.accent.color)
+            MetricTile(title: "5M AVG", value: percent(summary.average), color: module.accent.color)
+            MetricTile(title: "5M MAX", value: percent(summary.peak), color: module.accent.color)
+            MetricTile(title: "SAMPLES", value: "\(summary.windowSamples.count)", color: module.accent.color)
         }
     }
 

@@ -3,6 +3,7 @@ import Foundation
 @MainActor
 final class TelemetryStore: ObservableObject {
     @Published private(set) var snapshot = TelemetrySnapshot.mock
+    @Published private(set) var history: [String: [TelemetryHistorySample]] = [:]
 
     private var timer: Timer?
     private weak var preferences: PreferencesModel?
@@ -48,7 +49,11 @@ final class TelemetryStore: ObservableObject {
 
     var visibleModules: [TelemetryModule] {
         guard let preferences else { return snapshot.modules }
-        return snapshot.modules.filter { preferences.enabledModules.contains($0.name) }
+        return preferences.orderedModules(snapshot.modules.filter { preferences.enabledModules.contains($0.name) })
+    }
+
+    func historySummary(for module: String, window: TimeInterval = 300) -> TelemetryHistorySummary {
+        TelemetryHistorySummary(samples: history[module] ?? [], since: Date().addingTimeInterval(-window))
     }
 
     private func tick() {
@@ -78,15 +83,45 @@ final class TelemetryStore: ObservableObject {
             }
         }
 
+        let now = Date()
+        let mergedModules = modules.map { module in
+            var next = module
+            if let previous = previousModules[module.name] {
+                next.samples = Array((previous.samples + [module.latestSample]).suffix(36))
+            }
+            appendHistorySample(module: next, at: now)
+            return next
+        }
         snapshot = TelemetrySnapshot(
-            modules: modules.map { module in
-                var next = module
-                if let previous = previousModules[module.name] {
-                    next.samples = Array((previous.samples + [module.latestSample]).suffix(36))
-                }
-                return next
-            },
-            updatedAt: Date()
+            modules: preferences?.orderedModules(mergedModules) ?? mergedModules,
+            updatedAt: now
         )
     }
+
+    private func appendHistorySample(module: TelemetryModule, at date: Date) {
+        let next = (history[module.name] ?? []) + [TelemetryHistorySample(date: date, value: module.latestSample, healthState: module.healthState)]
+        history[module.name] = Array(next.suffix(240))
+    }
+}
+
+struct TelemetryHistorySample: Identifiable {
+    let id = UUID()
+    var date: Date
+    var value: Double
+    var healthState: HealthState
+}
+
+struct TelemetryHistorySummary {
+    var samples: [TelemetryHistorySample]
+    var since: Date
+
+    var windowSamples: [TelemetryHistorySample] { samples.filter { $0.date >= since } }
+    var values: [Double] { windowSamples.map(\.value) }
+    var min: Double { values.min() ?? 0 }
+    var peak: Double { values.sorted().last ?? 0 }
+    var average: Double {
+        guard !values.isEmpty else { return 0 }
+        return values.reduce(0, +) / Double(values.count)
+    }
+    var latest: Double { values.last ?? 0 }
 }

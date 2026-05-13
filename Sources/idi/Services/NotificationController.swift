@@ -9,12 +9,7 @@ final class NotificationController {
     func handle(snapshot: TelemetrySnapshot, preferences: PreferencesModel) {
         guard preferences.notificationsEnabled else { return }
         let thresholdModules = snapshot.modules.filter { module in
-            switch module.name {
-            case "CPU": return module.latestSample >= preferences.cpuWarningThreshold
-            case "Memory": return module.latestSample >= preferences.memoryWarningThreshold
-            case "Disk": return module.latestSample >= preferences.diskWarningThreshold
-            default: return false
-            }
+            Self.exceedsThreshold(module: module, preferences: preferences)
         }
         guard snapshot.healthState != .normal || !thresholdModules.isEmpty else { return }
         guard shouldNotify else { return }
@@ -30,6 +25,17 @@ final class NotificationController {
             UNUserNotificationCenter.current().add(request)
         }
         lastNotificationDate = Date()
+    }
+
+    static func exceedsThreshold(module: TelemetryModule, preferences: PreferencesModel) -> Bool {
+        switch module.name {
+        case "CPU": return module.latestSample >= preferences.cpuWarningThreshold
+        case "Memory": return module.latestSample >= preferences.memoryWarningThreshold
+        case "Disk": return module.latestSample >= preferences.diskWarningThreshold
+        case "Battery": return 1 - module.latestSample <= preferences.batteryLowThreshold
+        case "Sensors": return module.latestSample >= preferences.sensorHighThreshold
+        default: return false
+        }
     }
 
     private var shouldNotify: Bool {

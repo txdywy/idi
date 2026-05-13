@@ -9,13 +9,13 @@ last_updated: "2026-05-13T12:23:00+08:00"
 # idi State
 
 ## Current status
-idi is a native macOS menu-bar system monitor app with an original premium industrial-cockpit redesign informed by locally observed status-item monitor patterns: high-density glanceable modules, fast drill-down, and command access without copying proprietary iStat UI, text, assets, colors, or layouts.
+idi is a native macOS menu-bar system monitor app with a mature original industrial-cockpit product layer: ordered menu-bar instruments, bounded local telemetry history, local alert rules, process attribution limits, and distributable release packaging without copying proprietary iStat UI, text, assets, colors, or layouts.
 
 ## Implemented
 - Native AppKit `NSStatusItem` menu-bar shell with popover content sized for the cockpit surface.
 - Original dark-glass cockpit `NSPopover` with top command header, left module rail, selected-module hero/detail stage, dense grid chart, grouped table/details, and bottom command footer.
 - Selected-module navigation is stable by module name, falls back to the first visible module when disabled/unavailable, and shows a Preferences action for the empty state.
-- Module rail ordering: Battery, CPU, Memory, Disk, Network, GPU, Sensors, Apps, Time, Weather, with SF Symbols, short codes, values, accents, and health dots.
+- Persisted module ordering with Preferences Up/Down controls; popover rail, visible modules, primary menu-bar module display, separate status-item updates, and summaries respect the saved order.
 - Footer commands for Preferences, Refresh Now, Pause/Resume, Copy Summary, and Quit; Copy Summary writes visible telemetry to `NSPasteboard`.
 - Right-click quick menu on menu-bar status items for Open Cockpit, Pause/Resume, Refresh Now, Copy Summary, Preferences, and Quit.
 - Custom cockpit-style Preferences control center with Monitoring, Modules, Menu Bar, Alerts, and System/Privacy sections.
@@ -26,7 +26,8 @@ idi is a native macOS menu-bar system monitor app with an original premium indus
 - Weather module using Open-Meteo with caching and fallback behavior.
 - Time and local calendar/time-zone module.
 - Running app and top process attribution using `NSWorkspace` and `ps`, with Top CPU, Top Memory, and Recent Average/Peak table sections backed by recent per-PID history.
-- Preferences for refresh interval, density, visible modules, primary menu-bar display style, separate menu-bar items, launch at login, notifications, and simple CPU/memory/disk warning thresholds.
+- Preferences for refresh interval, density, visible modules, module order, primary menu-bar display style, separate menu-bar items, launch at login, notifications, CPU/memory/disk high thresholds, battery-low threshold, and sensor-high threshold.
+- Bounded in-memory telemetry history per module with 5-minute min/average/max/sample summaries in the popover detail view.
 - UserDefaults preference persistence.
 - Normal/warning/critical state aggregation.
 - Optional macOS notifications for warning/critical states with cooldown.
@@ -50,15 +51,18 @@ idi is a native macOS menu-bar system monitor app with an original premium indus
 | Time | Local date/time, week/day-of-year rows, time zone, world clocks | Uses Foundation calendars only; no Calendar permission request. |
 | Apps | Running app count, foreground apps, process table rows for fixed sort/filter-like sections: Top CPU, Top Memory, Recent Average/Peak | Uses `NSWorkspace` and `ps`; no Accessibility permission requirement and no terminate/kill actions. |
 | Detail UI | Module-specific headers, graph legends with min/max/current, grouped detail rows, and Apps table presentation | Implemented in original idi visual direction without copying proprietary iStat UI/text/assets/layouts. |
-| Customization | Popover module visibility, separate module menu-bar items, and primary menu-bar display style: Summary vs Modules | Implemented as simple persisted options; drag-and-drop ordering intentionally not implemented to avoid overbuilding. |
-| Alerts/preferences | Notification enablement plus simple CPU/memory/disk thresholds | Avoids overbuilt rule editor; global safety state remains clear. |
+| Customization | Popover module visibility, persisted module order, separate module menu-bar items, and primary menu-bar display style: Summary vs Modules | Implemented as simple persisted options with Up/Down ordering controls instead of drag-and-drop. |
+| Alerts/preferences | Notification enablement plus CPU/memory/disk high thresholds, battery-low threshold, and sensor-high threshold | Local rules only; no scripting, privileged control, SMC writes, or fan-control writes. |
+| Release packaging | `.app`, ad-hoc codesign verification, `.zip`, and `.dmg` when `hdiutil` is available | Not notarized because Developer ID/notary credentials are unavailable. |
 
 ## Verification
 - `swift test` passes.
 - `swift build` passes.
 - `scripts/build-app.sh` builds `.build/app/idi.app`.
+- `scripts/package-release.sh` creates `.build/release/idi.zip` and `.build/release/idi.dmg` when `hdiutil` is available.
 - `codesign --verify --deep --strict .build/app/idi.app` passes.
 - Launch smoke test confirms the packaged app starts as a macOS process.
+- Release artifacts are ad-hoc signed and explicitly not notarized.
 
 ## Run
 `scripts/build-app.sh && open .build/app/idi.app`

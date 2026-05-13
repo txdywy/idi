@@ -492,7 +492,11 @@ private struct ProcessHistory {
             .sorted { averageCPU(for: $0) > averageCPU(for: $1) }
             .prefix(4)
             .map { row(for: $0, section: "Recent Avg/Peak") }
-        return [DetailRow(label: "Table", value: "Fixed sortable views: Top CPU, Top Memory, Recent Average/Peak", group: "Process", prominence: .muted)] + topCPU + topMemory + recent
+        return [
+            DetailRow(label: "Table", value: "Fixed views: Top CPU, Top Memory, Recent Average/Peak", group: "Process", prominence: .muted),
+            DetailRow(label: "Disk attribution", value: "Not available without elevated/private attribution", group: "Attribution", prominence: .muted),
+            DetailRow(label: "Network attribution", value: "Not available without elevated/private attribution", group: "Attribution", prominence: .muted)
+        ] + topCPU + topMemory + recent
     }
 
     private func row(for sample: ProcessSample, section: String) -> DetailRow {

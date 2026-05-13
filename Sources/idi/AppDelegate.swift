@@ -162,6 +162,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             .store(in: &cancellables)
 
+        preferences.$moduleOrder
+            .sink { [weak self] _ in
+                self?.updateStatusItems()
+            }
+            .store(in: &cancellables)
+
         preferences.$launchAtLogin
             .sink { [weak self] enabled in
                 self?.loginItemController.apply(enabled: enabled)
@@ -200,7 +206,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             statusItem?.button?.title = "\(statusPrefix) \(telemetryStore.statusTitle)"
         }
 
-        for module in telemetryStore.snapshot.modules {
+        for module in preferences.orderedModules(telemetryStore.snapshot.modules) {
             guard let item = moduleStatusItems[module.name] else { continue }
             item.button?.title = "\(module.shortName) \(module.value)"
         }

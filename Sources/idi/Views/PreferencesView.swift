@@ -7,9 +7,7 @@ struct PreferencesView: View {
     @State private var selectedSection: PreferenceSection = .monitoring
 
     private var modulesByDisplayOrder: [String] {
-        preferences.availableModules.sorted { lhs, rhs in
-            TelemetryModule.displayOrder(for: lhs) < TelemetryModule.displayOrder(for: rhs)
-        }
+        preferences.orderedModuleNames(preferences.availableModules)
     }
 
     var body: some View {
@@ -170,13 +168,17 @@ struct PreferencesView: View {
 
     private var modulesPane: some View {
         pane(title: "Popover modules", subtitle: "Choose which instruments appear in the cockpit rail") {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 180), spacing: 10)], spacing: 10) {
+            VStack(spacing: 8) {
                 ForEach(modulesByDisplayOrder, id: \.self) { module in
-                    ModuleToggleTile(
+                    ModuleOrderRow(
                         module: module,
                         telemetry: telemetryStore.snapshot.modules.first(where: { $0.name == module }),
                         isOn: preferences.enabledModules.contains(module),
-                        toggle: { preferences.toggleModule(module) }
+                        isFirst: modulesByDisplayOrder.first == module,
+                        isLast: modulesByDisplayOrder.last == module,
+                        toggle: { preferences.toggleModule(module) },
+                        moveUp: { preferences.moveModule(module, direction: -1) },
+                        moveDown: { preferences.moveModule(module, direction: 1) }
                     )
                 }
             }
@@ -226,9 +228,14 @@ struct PreferencesView: View {
                 .toggleStyle(.switch)
                 .foregroundStyle(.white)
 
-            ThresholdControl(title: "CPU", value: $preferences.cpuWarningThreshold, color: .blue)
-            ThresholdControl(title: "Memory", value: $preferences.memoryWarningThreshold, color: .purple)
-            ThresholdControl(title: "Disk", value: $preferences.diskWarningThreshold, color: .orange)
+            ThresholdControl(title: "CPU high", value: $preferences.cpuWarningThreshold, range: 0.5...0.98, color: .blue)
+            ThresholdControl(title: "Memory high", value: $preferences.memoryWarningThreshold, range: 0.5...0.98, color: .purple)
+            ThresholdControl(title: "Disk high", value: $preferences.diskWarningThreshold, range: 0.5...0.98, color: .orange)
+            ThresholdControl(title: "Battery low", value: $preferences.batteryLowThreshold, range: 0.05...0.5, color: .mint)
+            ThresholdControl(title: "Sensor high", value: $preferences.sensorHighThreshold, range: 0.5...1.0, color: .yellow)
+            Text("Rules are local thresholds only. idi does not run scripts, request control permissions, or write hardware state.")
+                .font(.caption)
+                .foregroundStyle(.white.opacity(0.52))
         }
     }
 
@@ -348,34 +355,40 @@ private struct PreferenceRow<Control: View>: View {
     }
 }
 
-private struct ModuleToggleTile: View {
+private struct ModuleOrderRow: View {
     let module: String
     let telemetry: TelemetryModule?
     let isOn: Bool
+    let isFirst: Bool
+    let isLast: Bool
     let toggle: () -> Void
+    let moveUp: () -> Void
+    let moveDown: () -> Void
 
     var body: some View {
-        Button(action: toggle) {
-            HStack(spacing: 9) {
-                Image(systemName: telemetry?.symbol ?? "circle.grid.2x2")
-                    .foregroundStyle((telemetry?.accent.color ?? .cyan).opacity(isOn ? 1 : 0.5))
-                    .frame(width: 20)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(module)
-                        .font(.caption.weight(.bold))
-                    Text(telemetry?.value ?? "standby")
-                        .font(.system(.caption2, design: .monospaced).weight(.semibold))
-                        .foregroundStyle(.white.opacity(0.52))
-                }
-                Spacer()
+        HStack(spacing: 9) {
+            Button(action: toggle) {
                 Image(systemName: isOn ? "checkmark.circle.fill" : "circle")
                     .foregroundStyle(isOn ? .mint : .white.opacity(0.34))
             }
-            .foregroundStyle(isOn ? .white : .white.opacity(0.58))
-            .padding(10)
-            .background((telemetry?.accent.color ?? .cyan).opacity(isOn ? 0.13 : 0.045), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .buttonStyle(.plain)
+            Image(systemName: telemetry?.symbol ?? "circle.grid.2x2")
+                .foregroundStyle((telemetry?.accent.color ?? .cyan).opacity(isOn ? 1 : 0.5))
+                .frame(width: 20)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(module)
+                    .font(.caption.weight(.bold))
+                Text(telemetry?.value ?? "standby")
+                    .font(.system(.caption2, design: .monospaced).weight(.semibold))
+                    .foregroundStyle(.white.opacity(0.52))
+            }
+            Spacer()
+            Button("Up", action: moveUp).disabled(isFirst)
+            Button("Down", action: moveDown).disabled(isLast)
         }
-        .buttonStyle(.plain)
+        .foregroundStyle(isOn ? .white : .white.opacity(0.58))
+        .padding(10)
+        .background((telemetry?.accent.color ?? .cyan).opacity(isOn ? 0.13 : 0.045), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 }
 
@@ -415,6 +428,7 @@ private struct PinnedTile: View {
 private struct ThresholdControl: View {
     let title: String
     @Binding var value: Double
+    let range: ClosedRange<Double>
     let color: Color
 
     var body: some View {
@@ -431,7 +445,7 @@ private struct ThresholdControl: View {
                     .padding(.vertical, 4)
                     .background(color.opacity(0.14), in: Capsule())
             }
-            Slider(value: $value, in: 0.5...0.98, step: 0.01)
+            Slider(value: $value, in: range, step: 0.01)
                 .tint(color)
         }
         .padding(12)
