@@ -20,8 +20,8 @@ final class TelemetryStore: ObservableObject {
         stop()
         guard let preferences, !preferences.isPaused else { return }
 
-        let timer = Timer(timeInterval: preferences.refreshInterval, repeats: true) { [weak self] _ in
-            Task { @MainActor in
+        let timer = Timer(timeInterval: preferences.refreshInterval, repeats: true) { _ in
+            Task { @MainActor [weak self] in
                 self?.tick()
             }
         }

@@ -96,13 +96,15 @@ struct SMCCollector {
         guard call(connection: connection, input: &input, output: &output) else { return nil }
 
         if dataType == "sp78".smcKey {
-            let integer = Int8(bitPattern: output.bytes.0)
-            let fraction = Double(output.bytes.1) / 256.0
+            let bytes = output.bytes.tuple
+            let integer = Int8(bitPattern: bytes.0)
+            let fraction = Double(bytes.1) / 256.0
             return Double(integer) + fraction
         }
 
         if dataType == "fpe2".smcKey {
-            let raw = UInt16(output.bytes.0) << 8 | UInt16(output.bytes.1)
+            let bytes = output.bytes.tuple
+            let raw = UInt16(bytes.0) << 8 | UInt16(bytes.1)
             return Double(raw) / 4.0
         }
 
@@ -206,8 +208,6 @@ private struct SMCBytes {
     var _31: UInt8 = 0
 
     var tuple: (UInt8, UInt8) { (_0, _1) }
-    var `0`: UInt8 { _0 }
-    var `1`: UInt8 { _1 }
 }
 
 private extension String {

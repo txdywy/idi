@@ -175,8 +175,8 @@ extension TelemetryModule {
     }
 
     var groupedDetailRows: [(String, [DetailRow])] {
-        let groups = Dictionary(grouping: detailRows, by: \DetailRow.group)
-        let order = detailRows.map(\DetailRow.group)
+        let groups = Dictionary(grouping: detailRows, by: { $0.group })
+        let order = detailRows.map { $0.group }
         return groups.keys.sorted { lhs, rhs in
             (order.firstIndex(of: lhs) ?? Int.max) < (order.firstIndex(of: rhs) ?? Int.max)
         }.map { ($0, groups[$0] ?? []) }
