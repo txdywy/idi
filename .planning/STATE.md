@@ -17,6 +17,8 @@ idi is a native macOS menu-bar system monitor app with an original premium indus
 - Selected-module navigation is stable by module name, falls back to the first visible module when disabled/unavailable, and shows a Preferences action for the empty state.
 - Module rail ordering: Battery, CPU, Memory, Disk, Network, GPU, Sensors, Apps, Time, Weather, with SF Symbols, short codes, values, accents, and health dots.
 - Footer commands for Preferences, Refresh Now, Pause/Resume, Copy Summary, and Quit; Copy Summary writes visible telemetry to `NSPasteboard`.
+- Right-click quick menu on menu-bar status items for Open Cockpit, Pause/Resume, Refresh Now, Copy Summary, Preferences, and Quit.
+- Custom cockpit-style Preferences control center with Monitoring, Modules, Menu Bar, Alerts, and System/Privacy sections.
 - CPU, memory, network, disk, battery/power collectors.
 - GPU details through Metal device APIs, including explicit public-API-limited rows for utilization, memory used, frequency, temperature, and power.
 - Expanded read-only AppleSMC CPU/GPU/battery/enclosure temperature keys plus fan actual/min/max attempts with graceful fallback.

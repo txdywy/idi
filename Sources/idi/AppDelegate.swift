@@ -36,6 +36,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func togglePopover(_ sender: Any?) {
+        if NSApp.currentEvent?.type == .rightMouseUp {
+            showQuickMenu(from: sender)
+            return
+        }
+
         if popover.isShown {
             popover.performClose(sender)
         } else {
@@ -49,6 +54,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         popover.contentViewController?.view.window?.makeKey()
         NSApp.activate(ignoringOtherApps: true)
     }
+
+    private func showQuickMenu(from sender: Any? = nil) {
+        guard let button = sender as? NSStatusBarButton ?? statusItem?.button else { return }
+        let menu = NSMenu()
+        menu.addItem(NSMenuItem(title: telemetryStore.statusTitle, action: nil, keyEquivalent: ""))
+        menu.addItem(.separator())
+        menu.addItem(NSMenuItem(title: "Open Cockpit", action: #selector(openCockpitFromMenu), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: preferences.isPaused ? "Resume Sampling" : "Pause Sampling", action: #selector(togglePauseFromMenu), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: "Refresh Now", action: #selector(refreshNowFromMenu), keyEquivalent: "r"))
+        menu.addItem(NSMenuItem(title: "Copy Summary", action: #selector(copySummaryFromMenu), keyEquivalent: "c"))
+        menu.addItem(.separator())
+        menu.addItem(NSMenuItem(title: "Preferences…", action: #selector(showPreferencesFromMenu), keyEquivalent: ","))
+        menu.addItem(NSMenuItem(title: "Quit idi", action: #selector(quitFromMenu), keyEquivalent: "q"))
+        menu.items.forEach { $0.target = self }
+        menu.popUp(positioning: nil, at: NSPoint(x: 0, y: button.bounds.maxY + 4), in: button)
+    }
+
+    @objc private func openCockpitFromMenu() { showPopover() }
+    @objc private func togglePauseFromMenu() { togglePause() }
+    @objc private func refreshNowFromMenu() { telemetryStore.refreshNow() }
+    @objc private func copySummaryFromMenu() {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(telemetryStore.snapshot.summaryText, forType: .string)
+    }
+    @objc private func showPreferencesFromMenu() { showPreferences() }
+    @objc private func quitFromMenu() { NSApp.terminate(nil) }
 
     func showPreferences() {
         if let preferencesWindow {
@@ -84,6 +115,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         item.button?.font = .monospacedSystemFont(ofSize: 12, weight: .semibold)
         item.button?.target = self
         item.button?.action = #selector(togglePopover(_:))
+        item.button?.sendAction(on: [.leftMouseUp, .rightMouseUp])
         statusItem = item
     }
 
@@ -144,6 +176,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             item.button?.font = .monospacedSystemFont(ofSize: 11, weight: .medium)
             item.button?.target = self
             item.button?.action = #selector(togglePopover(_:))
+            item.button?.sendAction(on: [.leftMouseUp, .rightMouseUp])
             moduleStatusItems[module] = item
         }
 

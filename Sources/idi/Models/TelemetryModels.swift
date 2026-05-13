@@ -102,6 +102,10 @@ extension TelemetryModule {
     }
 
     var displayOrder: Int {
+        Self.displayOrder(for: name)
+    }
+
+    static func displayOrder(for name: String) -> Int {
         switch name {
         case "Battery": return 0
         case "CPU": return 1
