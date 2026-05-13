@@ -19,7 +19,7 @@ jobs:
     runs-on: macos-14
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Show Swift version
         run: swift --version
@@ -34,14 +34,14 @@ jobs:
         run: codesign --verify --deep --strict .build/app/idi.app
 
       - name: Upload app bundle zip
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: idi-app-zip
           path: .build/release/idi.zip
           if-no-files-found: error
 
       - name: Upload disk image
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: idi-dmg
           path: .build/release/idi.dmg
