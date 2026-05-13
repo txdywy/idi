@@ -1,0 +1,9 @@
+{
+  "mode": "autonomous",
+  "projectName": "idi",
+  "decisionOwner": "model",
+  "primaryPlatform": "macOS",
+  "initialStack": ["Electron", "Vite", "React", "TypeScript"],
+  "visualDirection": "graphite-glass precision cockpit",
+  "copyPolicy": "Use iStat-like product category research only; do not copy proprietary UI assets, icons, text, or exact layouts."
+}
