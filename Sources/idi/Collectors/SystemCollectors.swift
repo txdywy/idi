@@ -20,10 +20,9 @@ struct SystemCollectors {
         let battery = collectBattery()
         let gpu = collectGPU()
         let sensors = collectSensors()
-        let weather = collectWeather()
         let time = collectTime()
         let apps = collectApps()
-        return [cpu, memory, network, disk, battery, gpu, sensors, weather, time, apps]
+        return [cpu, memory, network, disk, battery, gpu, sensors, time, apps]
     }
 
     private mutating func collectCPU() -> TelemetryModule {
@@ -252,22 +251,6 @@ struct SystemCollectors {
         smcCollector.collect(thermalFallback: ProcessInfo.processInfo.thermalState)
     }
 
-    private func collectWeather() -> TelemetryModule {
-        module(
-            name: "Weather",
-            symbol: "cloud.sun",
-            latest: 0.44,
-            value: "offline",
-            detail: "Configured location: Shanghai",
-            accent: .cyan,
-            detailRows: [
-                DetailRow(label: "Provider", value: "Open-Meteo", group: "Privacy", prominence: .muted),
-                DetailRow(label: "Location", value: "Shanghai (configured)", group: "Weather", prominence: .primary),
-                DetailRow(label: "Privacy", value: "No current-location permission", group: "Privacy", prominence: .primary)
-            ]
-        )
-    }
-
     private func collectTime() -> TelemetryModule {
         let formatter = DateFormatter()
         formatter.timeStyle = .short
@@ -409,12 +392,12 @@ struct SystemCollectors {
 
         do {
             try process.run()
-            process.waitUntilExit()
         } catch {
             return []
         }
 
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
         guard let output = String(data: data, encoding: .utf8) else { return [] }
         return output
             .split(separator: "\n")

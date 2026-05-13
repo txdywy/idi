@@ -61,7 +61,7 @@ final class PreferencesModel: ObservableObject {
     let refreshIntervals: [TimeInterval] = [1.0, 2.0, 5.0]
     let availableModules = ["CPU", "Memory", "Network", "Disk", "Battery", "GPU", "Sensors", "Weather", "Time", "Apps"]
 
-    private static let defaultEnabledModules = ["CPU", "Memory", "Network", "Disk", "Battery", "GPU", "Sensors", "Time", "Apps"]
+    private static let defaultEnabledModules = ["CPU", "Memory", "Network", "Disk", "Battery", "GPU", "Sensors", "Weather", "Time", "Apps"]
     private static let defaultModuleOrder = ["Battery", "CPU", "Memory", "Disk", "Network", "GPU", "Sensors", "Apps", "Time", "Weather"]
 
     private let defaults: UserDefaults

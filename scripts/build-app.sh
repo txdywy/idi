@@ -19,10 +19,26 @@ if command -v sips >/dev/null && command -v iconutil >/dev/null; then
   SVG_ICON="$ROOT_DIR/.build/idi-icon.svg"
   cat > "$SVG_ICON" <<'SVG'
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
-  <rect width="1024" height="1024" rx="228" fill="#080a0f"/>
-  <circle cx="512" cy="512" r="376" fill="#111827" stroke="#8ee6ff" stroke-width="18"/>
-  <path d="M286 696V346h92v350h-92Zm180 0V224h92v472h-92Zm180 0V446h92v250h-92Z" fill="#8ee6ff"/>
-  <path d="M250 760h524" stroke="#fda085" stroke-width="52" stroke-linecap="round"/>
+  <defs>
+    <linearGradient id="bg" x1="160" y1="104" x2="864" y2="920" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#101824"/>
+      <stop offset="0.54" stop-color="#05070C"/>
+      <stop offset="1" stop-color="#111015"/>
+    </linearGradient>
+    <linearGradient id="ring" x1="238" y1="212" x2="790" y2="822" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8EE6FF"/>
+      <stop offset="0.52" stop-color="#D8F7FF"/>
+      <stop offset="1" stop-color="#F6B875"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="236" fill="url(#bg)"/>
+  <path d="M512 132 830 316v392L512 892 194 708V316L512 132Z" fill="#0B111A" stroke="url(#ring)" stroke-width="28"/>
+  <path d="M512 214 758 356v312L512 810 266 668V356L512 214Z" fill="#111A25" stroke="#253344" stroke-width="10"/>
+  <path d="M344 648V424h80v224h-80Zm120 0V318h96v330h-96Zm136 0V480h80v168h-80Z" fill="#1C4654" opacity="0.72"/>
+  <path d="M352 640V432h64v208h-64Zm128 0V326h64v314h-64Zm128 0V488h64v152h-64Z" fill="#8EE6FF"/>
+  <path d="M326 704h372" stroke="#F6B875" stroke-width="34" stroke-linecap="round"/>
+  <circle cx="512" cy="512" r="286" fill="none" stroke="#8EE6FF" stroke-opacity="0.16" stroke-width="8"/>
+  <path d="M302 354 512 234l210 120" fill="none" stroke="#FFFFFF" stroke-opacity="0.16" stroke-width="7" stroke-linecap="round"/>
 </svg>
 SVG
   for size in 16 32 64 128 256 512; do

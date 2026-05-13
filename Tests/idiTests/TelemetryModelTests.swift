@@ -15,14 +15,70 @@ final class TelemetryModelTests: XCTestCase {
     }
 
     @MainActor
-    func testWeatherIsOptInByDefault() {
+    func testWeatherIsEnabledByDefault() {
         let suiteName = "idi.tests.preferences.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
         defer { defaults.removePersistentDomain(forName: suiteName) }
 
         let preferences = PreferencesModel(defaults: defaults)
-        XCTAssertFalse(preferences.enabledModules.contains("Weather"))
+        XCTAssertTrue(preferences.enabledModules.contains("Weather"))
         XCTAssertTrue(preferences.availableModules.contains("Weather"))
+    }
+
+    func testSystemCollectorsDoNotPublishWeatherPlaceholder() {
+        var collectors = SystemCollectors()
+        let modules = collectors.collect()
+
+        XCTAssertFalse(modules.contains { $0.name == "Weather" && $0.value == "offline" })
+        XCTAssertFalse(modules.contains { $0.name == "Weather" })
+    }
+
+    func testMenuBarSummaryUsesNetworkBatteryAndWeatherLines() {
+        let snapshot = TelemetrySnapshot(
+            modules: [
+                TelemetryModule(name: "Network", symbol: "network", value: "4.2 MB/s", detail: "ok", accent: .green, samples: [0.2], healthState: .normal, detailRows: []),
+                TelemetryModule(name: "Battery", symbol: "battery.75percent", value: "82%", detail: "ok", accent: .mint, samples: [0.18], healthState: .normal, detailRows: []),
+                TelemetryModule(name: "Weather", symbol: "cloud.sun", value: "offline", detail: "Weather unavailable", accent: .cyan, samples: [0.44], healthState: .normal, detailRows: [])
+            ],
+            updatedAt: Date()
+        )
+
+        let text = MenuBarVitalsText(snapshot: snapshot, weatherEnabled: true)
+
+        XCTAssertEqual(text.statusTitle, "⇅ 4.2 MB/s\n▰ 82%  ☼ --°")
+        XCTAssertTrue(text.statusTitle.contains("\n"))
+        XCTAssertEqual(text.menuTitle, "⇅ 4.2 MB/s\n▰ 82%  ☼ --°")
+    }
+
+    func testMenuBarModuleModeUsesOrderedModuleValues() {
+        let modules = [
+            TelemetryModule(name: "CPU", symbol: "cpu", value: "21%", detail: "ok", accent: .blue, samples: [0.21], healthState: .normal, detailRows: []),
+            TelemetryModule(name: "Memory", symbol: "memorychip", value: "11.4 GB", detail: "ok", accent: .purple, samples: [0.62], healthState: .normal, detailRows: []),
+            TelemetryModule(name: "Network", symbol: "network", value: "4.2 MB/s", detail: "ok", accent: .green, samples: [0.2], healthState: .normal, detailRows: []),
+            TelemetryModule(name: "Battery", symbol: "battery.75percent", value: "82%", detail: "ok", accent: .mint, samples: [0.18], healthState: .normal, detailRows: [])
+        ]
+        let text = MenuBarVitalsText(snapshot: TelemetrySnapshot(modules: modules, updatedAt: Date()), weatherEnabled: false)
+
+        XCTAssertEqual(text.moduleLines(orderedModules: [modules[3], modules[0], modules[2], modules[1]]).primary, "BAT 82%  CPU 21%")
+        XCTAssertEqual(text.moduleLines(orderedModules: [modules[3], modules[0], modules[2], modules[1]]).secondary, "NET 4.2 MB/s  MEM 11.4 GB")
+    }
+
+    func testLocalTelemetryMergePreservesExistingWeather() {
+        let previous = TelemetrySnapshot(
+            modules: [
+                TelemetryModule(name: "Disk", symbol: "internaldrive", value: "401 GB free", detail: "ok", accent: .orange, samples: [0.2], healthState: .normal, detailRows: []),
+                TelemetryModule(name: "Weather", symbol: "sun.max", value: "26°C", detail: "Clear", accent: .cyan, samples: [0.72], healthState: .normal, detailRows: [])
+            ],
+            updatedAt: Date()
+        )
+        let localModules = [
+            TelemetryModule(name: "Disk", symbol: "internaldrive", value: "399 GB free", detail: "ok", accent: .orange, samples: [0.21], healthState: .normal, detailRows: [])
+        ]
+
+        let merged = TelemetryModuleMerge.localModules(localModules, preservingAsyncModulesFrom: previous)
+
+        XCTAssertEqual(merged.first { $0.name == "Disk" }?.value, "399 GB free")
+        XCTAssertEqual(merged.first { $0.name == "Weather" }?.value, "26°C")
     }
 
     @MainActor
@@ -58,7 +114,7 @@ final class TelemetryModelTests: XCTestCase {
         XCTAssertEqual(restored.batteryLowThreshold, 0.18, accuracy: 0.001)
         XCTAssertEqual(restored.sensorHighThreshold, 0.88, accuracy: 0.001)
         XCTAssertLessThan(restored.orderedIndex(for: "Weather"), restored.orderedIndex(for: "Time"))
-        XCTAssertTrue(restored.enabledModules.contains("Weather"))
+        XCTAssertFalse(restored.enabledModules.contains("Weather"))
         XCTAssertTrue(restored.separateMenuBarModules.contains("CPU"))
         XCTAssertTrue(restored.enabledModules.contains("CPU"))
     }

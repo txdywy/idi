@@ -21,26 +21,26 @@ struct PreferencesView: View {
             }
         }
         .padding(18)
-        .frame(width: 720, height: 640)
-        .background(background)
-        .tint(.cyan)
+        .frame(width: 740, height: 660)
+        .background(IdiDesign.background())
+        .tint(IdiDesign.cyan)
     }
 
     private var header: some View {
         HStack(spacing: 12) {
             Image(systemName: "slider.horizontal.3")
-                .font(.title2.weight(.bold))
-                .foregroundStyle(.cyan)
-                .frame(width: 44, height: 44)
-                .background(.cyan.opacity(0.14), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .font(.title2.weight(.semibold))
+                .foregroundStyle(IdiDesign.cyan)
+                .frame(width: 46, height: 46)
+                .background(IdiDesign.tile(cornerRadius: 15, accent: IdiDesign.cyan, active: true))
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text("idi control center")
-                    .font(.system(size: 24, weight: .black, design: .rounded))
-                    .foregroundStyle(.white)
+                    .font(IdiDesign.title(25, weight: .semibold))
+                    .foregroundStyle(IdiDesign.ink)
                 Text("Telemetry cadence, modules, pinned menu-bar instruments, and safety boundaries")
                     .font(.caption.weight(.medium))
-                    .foregroundStyle(.white.opacity(0.6))
+                    .foregroundStyle(IdiDesign.secondaryInk)
             }
 
             Spacer()
@@ -53,12 +53,12 @@ struct PreferencesView: View {
                     .padding(.vertical, 5)
                     .background(telemetryStore.snapshot.healthState.color.opacity(0.14), in: Capsule())
                 Text("updated \(telemetryStore.snapshot.updatedAt.formatted(date: .omitted, time: .standard))")
-                    .font(.system(.caption2, design: .monospaced).weight(.semibold))
-                    .foregroundStyle(.white.opacity(0.48))
+                    .font(IdiDesign.mono(.caption2))
+                    .foregroundStyle(IdiDesign.tertiaryInk)
             }
         }
         .padding(14)
-        .background(panel(cornerRadius: 22))
+        .background(IdiDesign.panel(cornerRadius: 24))
     }
 
     private var sectionRail: some View {
@@ -82,7 +82,7 @@ struct PreferencesView: View {
                     .foregroundStyle(selectedSection == section ? .white : .white.opacity(0.68))
                     .padding(.horizontal, 10)
                     .padding(.vertical, 10)
-                    .background(selectedSection == section ? Color.cyan.opacity(0.18) : Color.white.opacity(0.035), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .background(IdiDesign.tile(cornerRadius: 13, accent: IdiDesign.cyan, active: selectedSection == section))
                     .overlay(alignment: .leading) {
                         RoundedRectangle(cornerRadius: 2)
                             .fill(selectedSection == section ? Color.cyan : .clear)
@@ -101,13 +101,13 @@ struct PreferencesView: View {
                     .font(.caption.weight(.bold))
                 Text("No silent public IP lookup. Weather stays opt-in. Sensors stay read-only.")
                     .font(.caption2)
-                    .foregroundStyle(.white.opacity(0.52))
+                    .foregroundStyle(IdiDesign.tertiaryInk)
             }
             .padding(10)
-            .background(Color.white.opacity(0.045), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .background(IdiDesign.tile(cornerRadius: 15, accent: .mint))
         }
         .padding(12)
-        .background(panel(cornerRadius: 20))
+        .background(IdiDesign.panel(cornerRadius: 22))
     }
 
     @ViewBuilder
@@ -195,7 +195,7 @@ struct PreferencesView: View {
 
     private var menuBarPane: some View {
         pane(title: "Menu bar instruments", subtitle: "Mirror the iStat-style pattern with original pinned status items") {
-            PreferenceRow(title: "Primary item", detail: preferences.menuBarDisplayStyle == .summary ? "A compact idi summary stays in one status item." : "The primary item streams several enabled module values.") {
+            PreferenceRow(title: "Primary item", detail: preferences.menuBarDisplayStyle == .summary ? "Two lines: network speed, battery, and weather." : "Two lines: the first four ordered module values.") {
                 Picker("", selection: $preferences.menuBarDisplayStyle) {
                     ForEach(PreferencesModel.MenuBarDisplayStyle.allCases) { style in
                         Text(style.rawValue).tag(style)
@@ -235,7 +235,7 @@ struct PreferencesView: View {
             ThresholdControl(title: "Sensor high", value: $preferences.sensorHighThreshold, range: 0.5...1.0, color: .yellow)
             Text("Rules are local thresholds only. idi does not run scripts, request control permissions, or write hardware state.")
                 .font(.caption)
-                .foregroundStyle(.white.opacity(0.52))
+                .foregroundStyle(IdiDesign.tertiaryInk)
         }
     }
 
@@ -260,17 +260,17 @@ struct PreferencesView: View {
             VStack(alignment: .leading, spacing: 14) {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(title)
-                        .font(.system(size: 22, weight: .black, design: .rounded))
-                        .foregroundStyle(.white)
+                        .font(IdiDesign.title(23, weight: .semibold))
+                        .foregroundStyle(IdiDesign.ink)
                     Text(subtitle)
                         .font(.caption.weight(.medium))
-                        .foregroundStyle(.white.opacity(0.56))
+                        .foregroundStyle(IdiDesign.secondaryInk)
                 }
                 content()
             }
             .padding(16)
         }
-        .background(panel(cornerRadius: 22))
+        .background(IdiDesign.panel(cornerRadius: 24))
     }
 
     private func metricStrip(_ metrics: [(String, String)]) -> some View {
@@ -286,7 +286,7 @@ struct PreferencesView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(10)
-                .background(Color.white.opacity(0.045), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .background(IdiDesign.tile(cornerRadius: 13, accent: IdiDesign.cyan))
             }
         }
     }
@@ -296,20 +296,6 @@ struct PreferencesView: View {
         preferences.separateMenuBarModules = preferences.separateMenuBarModules.intersection(preferences.enabledModules)
     }
 
-    private func panel(cornerRadius: CGFloat) -> some View {
-        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-            .fill(.ultraThinMaterial.opacity(0.58))
-            .overlay(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous).stroke(.white.opacity(0.08), lineWidth: 1))
-            .shadow(color: .black.opacity(0.25), radius: 16, y: 10)
-    }
-
-    private var background: some View {
-        ZStack {
-            LinearGradient(colors: [Color(red: 0.025, green: 0.034, blue: 0.048), Color(red: 0.055, green: 0.065, blue: 0.085), Color.black], startPoint: .topLeading, endPoint: .bottomTrailing)
-            RadialGradient(colors: [.cyan.opacity(0.14), .clear], center: .topLeading, startRadius: 20, endRadius: 560)
-            RadialGradient(colors: [.blue.opacity(0.12), .clear], center: .bottomTrailing, startRadius: 40, endRadius: 520)
-        }
-    }
 }
 
 private enum PreferenceSection: String, CaseIterable, Identifiable {
@@ -351,7 +337,7 @@ private struct PreferenceRow<Control: View>: View {
             control
         }
         .padding(12)
-        .background(Color.white.opacity(0.045), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .background(IdiDesign.tile(cornerRadius: 15))
     }
 }
 
@@ -380,7 +366,7 @@ private struct ModuleOrderRow: View {
                     .font(.caption.weight(.bold))
                 Text(telemetry?.value ?? "standby")
                     .font(.system(.caption2, design: .monospaced).weight(.semibold))
-                    .foregroundStyle(.white.opacity(0.52))
+                    .foregroundStyle(IdiDesign.tertiaryInk)
             }
             Spacer()
             Button("Up", action: moveUp).disabled(isFirst)
@@ -449,7 +435,7 @@ private struct ThresholdControl: View {
                 .tint(color)
         }
         .padding(12)
-        .background(Color.white.opacity(0.045), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .background(IdiDesign.tile(cornerRadius: 15))
     }
 }
 
@@ -475,6 +461,6 @@ private struct SafetyCard: View {
             Spacer()
         }
         .padding(12)
-        .background(Color.white.opacity(0.045), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .background(IdiDesign.tile(cornerRadius: 15))
     }
 }

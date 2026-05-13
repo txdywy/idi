@@ -6,3 +6,6 @@ dist/
 *.png
 .env
 .env.*
+.omc/
+.serena/
+.remember/

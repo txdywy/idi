@@ -57,7 +57,7 @@ final class TelemetryStore: ObservableObject {
     }
 
     private func tick() {
-        merge(collectedModules: collectors.collect())
+        merge(collectedModules: TelemetryModuleMerge.localModules(collectors.collect(), preservingAsyncModulesFrom: snapshot))
 
         guard preferences?.enabledModules.contains("Weather") == true else { return }
 

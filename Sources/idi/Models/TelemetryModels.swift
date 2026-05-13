@@ -84,6 +84,54 @@ enum ModuleAccent {
     case cyan
 }
 
+struct MenuBarVitalsText {
+    var snapshot: TelemetrySnapshot
+    var weatherEnabled: Bool
+
+    var statusTitle: String {
+        "\(primaryLine)\n\(secondaryLine)"
+    }
+
+    var menuTitle: String {
+        statusTitle
+    }
+
+    var primaryLine: String {
+        let network = moduleValue("Network") ?? "--/s"
+        return "⇅ \(network)"
+    }
+
+    var secondaryLine: String {
+        let battery = moduleValue("Battery") ?? "--"
+        return "▰ \(battery)  ☼ \(weatherValue ?? "--°")"
+    }
+
+    func moduleLines(orderedModules: [TelemetryModule]) -> (primary: String, secondary: String) {
+        let values = orderedModules.prefix(4).map { "\($0.shortCode) \($0.value)" }
+        return (
+            values.prefix(2).joined(separator: "  "),
+            values.dropFirst(2).prefix(2).joined(separator: "  ")
+        )
+    }
+
+    private var weatherValue: String? {
+        guard weatherEnabled, let value = moduleValue("Weather"), value != "offline" else { return nil }
+        return value
+    }
+
+    private func moduleValue(_ name: String) -> String? {
+        snapshot.modules.first { $0.name == name }?.value
+    }
+}
+
+struct TelemetryModuleMerge {
+    static func localModules(_ modules: [TelemetryModule], preservingAsyncModulesFrom snapshot: TelemetrySnapshot) -> [TelemetryModule] {
+        let localNames = Set(modules.map(\.name))
+        let asyncModules = snapshot.modules.filter { $0.name == "Weather" && !localNames.contains($0.name) }
+        return modules + asyncModules
+    }
+}
+
 extension TelemetryModule {
     var shortCode: String {
         switch name {

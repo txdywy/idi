@@ -3,15 +3,18 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: complete
-last_updated: "2026-05-13T12:23:00+08:00"
+stopped_at: context exhaustion at 76% (2026-05-13)
+last_updated: "2026-05-13T11:05:22.604Z"
 ---
 
 # idi State
 
 ## Current status
+
 idi is a native macOS menu-bar system monitor app with a mature original industrial-cockpit product layer: ordered menu-bar instruments, bounded local telemetry history, local alert rules, process attribution limits, and distributable release packaging without copying proprietary iStat UI, text, assets, colors, or layouts.
 
 ## Implemented
+
 - Native AppKit `NSStatusItem` menu-bar shell with popover content sized for the cockpit surface.
 - Original dark-glass cockpit `NSPopover` with top command header, left module rail, selected-module hero/detail stage, dense grid chart, grouped table/details, and bottom command footer.
 - Selected-module navigation is stable by module name, falls back to the first visible module when disabled/unavailable, and shows a Preferences action for the empty state.
@@ -56,6 +59,7 @@ idi is a native macOS menu-bar system monitor app with a mature original industr
 | Release packaging | `.app`, ad-hoc codesign verification, `.zip`, and `.dmg` when `hdiutil` is available | Not notarized because Developer ID/notary credentials are unavailable. |
 
 ## Verification
+
 - `swift test` passes.
 - `swift build` passes.
 - `scripts/build-app.sh` builds `.build/app/idi.app`.
@@ -65,4 +69,11 @@ idi is a native macOS menu-bar system monitor app with a mature original industr
 - Release artifacts are ad-hoc signed and explicitly not notarized.
 
 ## Run
+
 `scripts/build-app.sh && open .build/app/idi.app`
+
+## Session Continuity
+
+Last session: 2026-05-13T11:05:22.600Z
+Stopped at: context exhaustion at 76% (2026-05-13)
+Resume file: None

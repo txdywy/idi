@@ -23,62 +23,59 @@ struct PopoverRootView: View {
     }
 
     var body: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 9) {
             header
-            HStack(spacing: 12) {
+            HStack(spacing: 10) {
                 moduleRail
-                    .frame(width: 205)
+                    .frame(width: 186)
                 detailStage
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
+            .frame(maxHeight: .infinity)
             footer
         }
-        .padding(14)
-        .frame(width: 780, height: 640)
-        .background(background)
+        .padding(12)
+        .frame(minWidth: 620, idealWidth: 700, maxWidth: .infinity, minHeight: 420, idealHeight: 480, maxHeight: .infinity)
+        .background(IdiDesign.background())
         .onAppear(perform: repairSelection)
         .onChange(of: telemetryStore.visibleModules.map(\.name)) { _ in repairSelection() }
     }
 
     private var header: some View {
-        HStack(spacing: 14) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(LinearGradient(colors: [.cyan.opacity(0.26), .blue.opacity(0.12)], startPoint: .topLeading, endPoint: .bottomTrailing))
-                Image(systemName: "waveform.path.ecg.rectangle")
-                    .font(.title2.weight(.semibold))
-                    .foregroundStyle(.cyan)
-            }
-            .frame(width: 46, height: 46)
+        HStack(spacing: 12) {
+            Image(systemName: "waveform.path.ecg.rectangle")
+                .font(.system(size: 22, weight: .semibold))
+                .foregroundStyle(IdiDesign.cyan)
+                .frame(width: 38, height: 38)
+                .background(IdiDesign.cyan.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
 
             VStack(alignment: .leading, spacing: 2) {
                 Text("idi cockpit")
-                    .font(.system(size: 24, weight: .black, design: .rounded))
-                    .foregroundStyle(.white)
-                Text("Private local telemetry · industrial command surface")
+                    .font(IdiDesign.title(22, weight: .semibold))
+                    .foregroundStyle(IdiDesign.ink)
+                Text("Private local telemetry")
                     .font(.caption.weight(.medium))
-                    .foregroundStyle(.white.opacity(0.62))
+                    .foregroundStyle(IdiDesign.secondaryInk)
             }
 
             Spacer()
 
-            HStack(spacing: 10) {
+            HStack(spacing: 8) {
                 statusPill(title: preferences.isPaused ? "Paused" : telemetryStore.snapshot.healthState.rawValue, color: preferences.isPaused ? .orange : telemetryStore.snapshot.healthState.color)
-                statusPill(title: "\(visibleModules.count) online", color: .cyan)
+                statusPill(title: "\(visibleModules.count) online", color: IdiDesign.cyan)
                 Text(telemetryStore.snapshot.updatedAt.formatted(date: .omitted, time: .standard))
-                    .font(.system(.caption, design: .monospaced).weight(.semibold))
-                    .foregroundStyle(.white.opacity(0.72))
+                    .font(IdiDesign.mono(.caption, weight: .semibold))
+                    .foregroundStyle(IdiDesign.secondaryInk)
             }
         }
-        .padding(12)
-        .background(glassPanel(cornerRadius: 20))
+        .padding(.horizontal, 4)
     }
 
     private var moduleRail: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("MODULE RAIL")
-                .font(.system(.caption2, design: .monospaced).weight(.bold))
-                .foregroundStyle(.white.opacity(0.42))
+        VStack(alignment: .leading, spacing: 6) {
+            Text("MODULES")
+                .font(IdiDesign.mono(.caption2, weight: .bold))
+                .foregroundStyle(IdiDesign.tertiaryInk)
                 .padding(.horizontal, 8)
 
             if visibleModules.isEmpty {
@@ -93,38 +90,44 @@ struct PopoverRootView: View {
                 }
                 .padding(12)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(glassPanel(cornerRadius: 16))
+                .background(IdiDesign.panel(cornerRadius: 18))
             } else {
-                ForEach(visibleModules) { module in
-                    Button {
-                        selectedModuleName = module.name
-                    } label: {
-                        RailRow(module: module, isSelected: module.name == selectedModule?.name)
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 6) {
+                        ForEach(visibleModules) { module in
+                            Button {
+                                selectedModuleName = module.name
+                            } label: {
+                                RailRow(module: module, isSelected: module.name == selectedModule?.name)
+                            }
+                            .buttonStyle(.plain)
+                        }
                     }
-                    .buttonStyle(.plain)
                 }
-                Spacer(minLength: 0)
             }
         }
         .padding(10)
-        .background(glassPanel(cornerRadius: 18))
+        .background(IdiDesign.panel(cornerRadius: 20))
     }
 
     @ViewBuilder
     private var detailStage: some View {
         if let module = selectedModule {
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 8) {
                 hero(for: module)
                 DenseChart(samples: telemetryStore.historySummary(for: module.name).values.isEmpty ? module.samples : telemetryStore.historySummary(for: module.name).values, color: module.accent.color)
-                    .frame(height: 150)
-                    .background(Color.black.opacity(0.24), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(module.accent.color.opacity(0.18), lineWidth: 1))
+                    .frame(height: module.name == "Apps" ? 76 : 104)
+                    .background(LinearGradient(colors: [Color.black.opacity(0.38), module.accent.color.opacity(0.08)], startPoint: .topLeading, endPoint: .bottomTrailing), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(module.accent.color.opacity(0.28), lineWidth: 1))
                 historyTiles(for: module)
-                summaryTiles(for: module)
+                if module.name != "Apps" {
+                    summaryTiles(for: module)
+                }
                 detailRows(for: module)
+                    .frame(maxHeight: .infinity)
             }
-            .padding(14)
-            .background(glassPanel(cornerRadius: 22))
+            .padding(10)
+            .background(IdiDesign.heroPanel(cornerRadius: 24))
         } else {
             VStack(spacing: 14) {
                 Image(systemName: "switch.2")
@@ -138,7 +141,7 @@ struct PopoverRootView: View {
                 Button("Open Preferences", action: showPreferences)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(glassPanel(cornerRadius: 22))
+            .background(IdiDesign.panel(cornerRadius: 24))
         }
     }
 
@@ -155,13 +158,13 @@ struct PopoverRootView: View {
                     .font(.system(.caption, design: .monospaced).weight(.black))
                     .foregroundStyle(module.accent.color)
                 Text(module.value)
-                    .font(.system(size: 36, weight: .black, design: .rounded))
-                    .foregroundStyle(.white)
+                    .font(IdiDesign.title(30, weight: .semibold))
+                    .foregroundStyle(IdiDesign.ink)
                     .lineLimit(1)
                     .minimumScaleFactor(0.58)
                 Text(module.detail)
                     .font(.caption.weight(.medium))
-                    .foregroundStyle(.white.opacity(0.62))
+                    .foregroundStyle(IdiDesign.secondaryInk)
                     .lineLimit(1)
             }
 
@@ -221,30 +224,27 @@ struct PopoverRootView: View {
     }
 
     private var footer: some View {
-        HStack(spacing: 8) {
-            Button("Preferences", action: showPreferences)
-            Button("Refresh Now") { telemetryStore.refreshNow() }
-            Button(preferences.isPaused ? "Resume" : "Pause", action: togglePause)
-            Button(copied ? "Copied" : "Copy Summary") { copySummary() }
-            Spacer()
-            Text("No SMC writes · no fan-control writes · Weather opt-in")
-                .font(.system(.caption2, design: .monospaced).weight(.semibold))
-                .foregroundStyle(.white.opacity(0.42))
-            Button("Quit", action: quit)
-                .keyboardShortcut("q")
-        }
-        .buttonStyle(.bordered)
-        .tint(.cyan)
-        .padding(10)
-        .background(glassPanel(cornerRadius: 18))
-    }
+        HStack(spacing: 10) {
+            Text("read-only sensors · local alerts · no silent public IP")
+                .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                .foregroundStyle(IdiDesign.tertiaryInk)
 
-    private var background: some View {
-        ZStack {
-            LinearGradient(colors: [Color(red: 0.025, green: 0.034, blue: 0.048), Color(red: 0.055, green: 0.065, blue: 0.085), Color.black], startPoint: .topLeading, endPoint: .bottomTrailing)
-            RadialGradient(colors: [.cyan.opacity(0.16), .clear], center: .topLeading, startRadius: 30, endRadius: 520)
-            RadialGradient(colors: [.blue.opacity(0.12), .clear], center: .bottomTrailing, startRadius: 30, endRadius: 460)
+            Spacer()
+
+            HStack(spacing: 6) {
+                Button("Preferences", action: showPreferences)
+                Button("Refresh") { telemetryStore.refreshNow() }
+                Button(preferences.isPaused ? "Resume" : "Pause", action: togglePause)
+                Button(copied ? "Copied" : "Copy") { copySummary() }
+                Button("Quit", action: quit)
+                    .keyboardShortcut("q")
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            .tint(IdiDesign.cyan)
         }
+        .padding(.horizontal, 4)
+        .padding(.top, 2)
     }
 
     private func statusPill(title: String, color: Color) -> some View {
@@ -254,13 +254,6 @@ struct PopoverRootView: View {
             .padding(.vertical, 5)
             .background(color.opacity(0.16), in: Capsule())
             .foregroundStyle(color)
-    }
-
-    private func glassPanel(cornerRadius: CGFloat) -> some View {
-        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-            .fill(.ultraThinMaterial.opacity(0.55))
-            .overlay(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous).stroke(.white.opacity(0.08), lineWidth: 1))
-            .shadow(color: .black.opacity(0.32), radius: 18, y: 12)
     }
 
     private func repairSelection() {
@@ -287,14 +280,14 @@ private struct RailRow: View {
     let isSelected: Bool
 
     var body: some View {
-        HStack(spacing: 9) {
+        HStack(spacing: 7) {
             Circle()
                 .fill(module.healthState.color)
-                .frame(width: 7, height: 7)
+                .frame(width: 6, height: 6)
             Image(systemName: module.symbol)
-                .font(.system(size: 14, weight: .semibold))
+                .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(module.accent.color)
-                .frame(width: 18)
+                .frame(width: 16)
             VStack(alignment: .leading, spacing: 1) {
                 HStack(spacing: 5) {
                     Text(module.shortCode)
@@ -310,9 +303,9 @@ private struct RailRow: View {
             Spacer(minLength: 0)
         }
         .foregroundStyle(isSelected ? .white : .white.opacity(0.76))
-        .padding(.horizontal, 9)
-        .padding(.vertical, 8)
-        .background(isSelected ? module.accent.color.opacity(0.18) : Color.white.opacity(0.035), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
+        .background(IdiDesign.tile(cornerRadius: 13, accent: module.accent.color, active: isSelected))
         .overlay(alignment: .leading) {
             RoundedRectangle(cornerRadius: 2)
                 .fill(isSelected ? module.accent.color : .clear)
@@ -333,13 +326,18 @@ private struct DenseChart: View {
                 grid(in: proxy.size)
                 if points.count > 1 {
                     area(points: points, size: proxy.size)
-                        .fill(LinearGradient(colors: [color.opacity(0.32), color.opacity(0.03)], startPoint: .top, endPoint: .bottom))
+                        .fill(LinearGradient(colors: [color.opacity(0.28), IdiDesign.cyan.opacity(0.025)], startPoint: .top, endPoint: .bottom))
                     line(points: points)
-                        .stroke(color, style: StrokeStyle(lineWidth: 2.2, lineCap: .round, lineJoin: .round))
+                        .stroke(color.opacity(0.35), style: StrokeStyle(lineWidth: 5.5, lineCap: .round, lineJoin: .round))
+                        .blur(radius: 5)
+                    line(points: points)
+                        .stroke(color, style: StrokeStyle(lineWidth: 1.8, lineCap: .round, lineJoin: .round))
                     if let last = points.last {
                         Circle()
-                            .fill(color)
-                            .frame(width: 8, height: 8)
+                            .fill(Color.white)
+                            .frame(width: 6, height: 6)
+                            .overlay(Circle().stroke(color, lineWidth: 2))
+                            .shadow(color: color.opacity(0.7), radius: 8)
                             .position(last)
                     }
                 }
@@ -372,7 +370,7 @@ private struct DenseChart: View {
                 path.addLine(to: CGPoint(x: x, y: size.height))
             }
         }
-        .stroke(.white.opacity(0.07), lineWidth: 1)
+        .stroke(Color.white.opacity(0.055), lineWidth: 0.5)
     }
 
     private func line(points: [CGPoint]) -> Path {
@@ -413,8 +411,8 @@ private struct MetricTile: View {
                 .minimumScaleFactor(0.55)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(8)
-        .background(Color.white.opacity(0.045), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .padding(7)
+        .background(IdiDesign.tile(cornerRadius: 13, accent: color))
     }
 }
 

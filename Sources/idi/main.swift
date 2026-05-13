@@ -1,11 +1,13 @@
 import AppKit
 import SwiftUI
 
+@MainActor private var appDelegate: AppDelegate?
+
 MainActor.assumeIsolated {
     let app = NSApplication.shared
-    let delegate = AppDelegate()
+    appDelegate = AppDelegate()
 
-    app.delegate = delegate
+    app.delegate = appDelegate
     app.setActivationPolicy(.accessory)
     app.run()
 }
