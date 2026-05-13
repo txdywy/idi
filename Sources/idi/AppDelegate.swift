@@ -90,7 +90,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func configurePopover() {
         popover.behavior = .transient
         popover.animates = true
-        popover.contentSize = NSSize(width: 420, height: 560)
+        popover.contentSize = NSSize(width: 780, height: 640)
         popover.contentViewController = NSHostingController(
             rootView: PopoverRootView(
                 showPreferences: { [weak self] in self?.showPreferences() },

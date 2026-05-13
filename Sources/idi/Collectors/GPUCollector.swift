@@ -14,30 +14,30 @@ struct GPUCollector {
                 samples: Array(repeating: 0.1, count: 18),
                 healthState: .normal,
                 detailRows: [
-                    DetailRow(label: "Metal", value: "Unavailable"),
-                    DetailRow(label: "Utilization", value: "Not exposed by public Metal API"),
-                    DetailRow(label: "Memory used", value: "Not exposed by public Metal API"),
-                    DetailRow(label: "Frequency", value: "Not exposed by public Metal API"),
-                    DetailRow(label: "Temperature", value: "See Sensors module when SMC exposes it"),
-                    DetailRow(label: "Power", value: "Not exposed by public Metal API")
+                    DetailRow(label: "Metal", value: "Unavailable", group: "Device", prominence: .muted),
+                    DetailRow(label: "Utilization", value: "Not exposed by public Metal API", group: "Public API limits", prominence: .muted),
+                    DetailRow(label: "Memory used", value: "Not exposed by public Metal API", group: "Public API limits", prominence: .muted),
+                    DetailRow(label: "Frequency", value: "Not exposed by public Metal API", group: "Public API limits", prominence: .muted),
+                    DetailRow(label: "Temperature", value: "See Sensors module when SMC exposes it", group: "Public API limits", prominence: .muted),
+                    DetailRow(label: "Power", value: "Not exposed by public Metal API", group: "Public API limits", prominence: .muted)
                 ]
             )
         }
 
         let recommendedMB = device.recommendedMaxWorkingSetSize / 1_048_576
         var rows = [
-            DetailRow(label: "Device", value: device.name),
-            DetailRow(label: "Metal devices", value: devices.map(\.name).joined(separator: ", ")),
-            DetailRow(label: "Unified memory", value: device.hasUnifiedMemory ? "Yes" : "No"),
-            DetailRow(label: "Recommended workset", value: "\(recommendedMB) MB"),
-            DetailRow(label: "Low power", value: device.isLowPower ? "Yes" : "No"),
-            DetailRow(label: "Removable", value: device.isRemovable ? "Yes" : "No"),
-            DetailRow(label: "Headless", value: device.isHeadless ? "Yes" : "No"),
-            DetailRow(label: "Utilization", value: "Not exposed by public Metal API"),
-            DetailRow(label: "Memory used", value: "Not exposed by public Metal API"),
-            DetailRow(label: "Frequency", value: "Not exposed by public Metal API"),
-            DetailRow(label: "Temperature", value: "See Sensors module when SMC exposes it"),
-            DetailRow(label: "Power", value: "Not exposed by public Metal API")
+            DetailRow(label: "Device", value: device.name, group: "Device", prominence: .primary),
+            DetailRow(label: "Metal devices", value: devices.map(\.name).joined(separator: ", "), group: "Device"),
+            DetailRow(label: "Unified memory", value: device.hasUnifiedMemory ? "Yes" : "No", group: "Memory", prominence: .primary),
+            DetailRow(label: "Recommended workset", value: "\(recommendedMB) MB", group: "Memory", prominence: .primary),
+            DetailRow(label: "Low power", value: device.isLowPower ? "Yes" : "No", group: "Device"),
+            DetailRow(label: "Removable", value: device.isRemovable ? "Yes" : "No", group: "Device"),
+            DetailRow(label: "Headless", value: device.isHeadless ? "Yes" : "No", group: "Device"),
+            DetailRow(label: "Utilization", value: "Not exposed by public Metal API", group: "Public API limits", prominence: .muted),
+            DetailRow(label: "Memory used", value: "Not exposed by public Metal API", group: "Public API limits", prominence: .muted),
+            DetailRow(label: "Frequency", value: "Not exposed by public Metal API", group: "Public API limits", prominence: .muted),
+            DetailRow(label: "Temperature", value: "See Sensors module when SMC exposes it", group: "Public API limits", prominence: .muted),
+            DetailRow(label: "Power", value: "Not exposed by public Metal API", group: "Public API limits", prominence: .muted)
         ]
         if #available(macOS 13.0, *) {
             let location: String
@@ -53,7 +53,7 @@ struct GPUCollector {
             @unknown default:
                 location = "Unknown"
             }
-            rows.insert(DetailRow(label: "Location", value: location), at: 6)
+            rows.insert(DetailRow(label: "Location", value: location, group: "Device"), at: 6)
         }
 
         return TelemetryModule(

@@ -7,6 +7,18 @@ struct PreferencesView: View {
 
     var body: some View {
         Form {
+            Section {
+                VStack(alignment: .leading, spacing: 8) {
+                    Label("idi cockpit safety", systemImage: "shield.lefthalf.filled")
+                        .font(.headline)
+                        .foregroundStyle(.cyan)
+                    Text("The menu-bar cockpit stays local-first: no SMC writes, no fan-control writes, no silent public IP lookup, and Weather fetches only when its module is enabled.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.vertical, 4)
+            }
+
             Section("Monitoring") {
                 Picker("Refresh interval", selection: $preferences.refreshInterval) {
                     ForEach(preferences.refreshIntervals, id: \.self) { interval in
@@ -96,7 +108,10 @@ struct PreferencesView: View {
                 }
             }
         }
+        .tint(.cyan)
+        .scrollContentBackground(.hidden)
+        .background(LinearGradient(colors: [Color(nsColor: .windowBackgroundColor), .cyan.opacity(0.08)], startPoint: .topLeading, endPoint: .bottomTrailing))
         .padding(22)
-        .frame(width: 500, height: 640)
+        .frame(width: 520, height: 680)
     }
 }

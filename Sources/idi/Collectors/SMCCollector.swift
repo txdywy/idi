@@ -6,8 +6,8 @@ struct SMCCollector {
         let snapshot = readSnapshot()
         let rows = snapshot.rows.isEmpty
             ? [
-                DetailRow(label: "Thermal state", value: thermalFallback.value),
-                DetailRow(label: "AppleSMC", value: snapshot.status)
+                DetailRow(label: "Thermal state", value: thermalFallback.value, group: "Thermal", prominence: .primary),
+                DetailRow(label: "AppleSMC", value: snapshot.status, group: "Safety", prominence: .muted)
             ]
             : snapshot.rows
 
@@ -48,19 +48,19 @@ struct SMCCollector {
             ("F0Ac", "Fan 0 actual"), ("F0Mn", "Fan 0 minimum"), ("F0Mx", "Fan 0 maximum"),
             ("F1Ac", "Fan 1 actual"), ("F1Mn", "Fan 1 minimum"), ("F1Mx", "Fan 1 maximum")
         ]
-        var rows = [DetailRow(label: "Fan control", value: "Read-only / disabled for safety")]
+        var rows = [DetailRow(label: "Fan control", value: "Read-only / disabled for safety", group: "Safety", prominence: .primary)]
         var primary: Double?
 
         for (key, label) in temperatureKeys {
             if let value = readNumeric(key: key, connection: connection) {
                 if primary == nil { primary = value }
-                rows.append(DetailRow(label: label, value: String(format: "%.1f°C · %@", value, key)))
+                rows.append(DetailRow(label: label, value: String(format: "%.1f°C · %@", value, key), group: "Temperatures", prominence: primary == nil ? .primary : .normal))
             }
         }
 
         for (key, label) in fanKeys {
             if let value = readNumeric(key: key, connection: connection) {
-                rows.append(DetailRow(label: label, value: "\(Int(value)) rpm · \(key)"))
+                rows.append(DetailRow(label: label, value: "\(Int(value)) rpm · \(key)", group: "Fans"))
             }
         }
 

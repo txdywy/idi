@@ -50,10 +50,10 @@ struct SystemCollectors {
         let uptime = ProcessInfo.processInfo.systemUptime
         let coreRows = collectCoreUsageRows()
         let rows = [
-            DetailRow(label: "Cores", value: "\(ProcessInfo.processInfo.activeProcessorCount) active"),
-            DetailRow(label: "Thermals", value: ProcessInfo.processInfo.thermalState.value),
-            DetailRow(label: "Load avg", value: String(format: "%.2f  %.2f  %.2f", loads.0, loads.1, loads.2)),
-            DetailRow(label: "Uptime", value: formatDuration(uptime))
+            DetailRow(label: "Cores", value: "\(ProcessInfo.processInfo.activeProcessorCount) active", group: "Load", prominence: .primary),
+            DetailRow(label: "Thermals", value: ProcessInfo.processInfo.thermalState.value, group: "Thermal", prominence: .primary),
+            DetailRow(label: "Load avg", value: String(format: "%.2f  %.2f  %.2f", loads.0, loads.1, loads.2), group: "Load", prominence: .primary),
+            DetailRow(label: "Uptime", value: formatDuration(uptime), group: "System")
         ] + coreRows
 
         return module(
@@ -103,14 +103,14 @@ struct SystemCollectors {
             detail: usage > 0.78 ? "Pressure rising" : "Pressure stable",
             accent: .purple,
             detailRows: [
-                DetailRow(label: "Active", value: formatBytes(active, style: .memory)),
-                DetailRow(label: "Wired", value: formatBytes(wired, style: .memory)),
-                DetailRow(label: "Compressed", value: formatBytes(compressed, style: .memory)),
-                DetailRow(label: "Inactive", value: formatBytes(inactive, style: .memory)),
-                DetailRow(label: "Speculative", value: formatBytes(speculative, style: .memory)),
-                DetailRow(label: "Free", value: formatBytes(free, style: .memory)),
-                DetailRow(label: "File cache", value: formatBytes(fileCache, style: .memory)),
-                DetailRow(label: "Swap", value: swap)
+                DetailRow(label: "Active", value: formatBytes(active, style: .memory), group: "Pressure", prominence: .primary),
+                DetailRow(label: "Wired", value: formatBytes(wired, style: .memory), group: "Pressure", prominence: .primary),
+                DetailRow(label: "Compressed", value: formatBytes(compressed, style: .memory), group: "Pressure"),
+                DetailRow(label: "Inactive", value: formatBytes(inactive, style: .memory), group: "Cache"),
+                DetailRow(label: "Speculative", value: formatBytes(speculative, style: .memory), group: "Cache"),
+                DetailRow(label: "Free", value: formatBytes(free, style: .memory), group: "Capacity", prominence: .primary),
+                DetailRow(label: "File cache", value: formatBytes(fileCache, style: .memory), group: "Cache"),
+                DetailRow(label: "Swap", value: swap, group: "Capacity")
             ]
         )
     }
@@ -121,8 +121,8 @@ struct SystemCollectors {
 
         guard let previousNetwork else {
             let rows = sample.interfaces.map { interface in
-                DetailRow(label: interface.name, value: "\(interface.ipv4 ?? "no IPv4") · sampling")
-            } + [DetailRow(label: "Connectivity", value: sample.isConnected ? "Local network active" : "No active interface")]
+                DetailRow(label: interface.name, value: "\(interface.ipv4 ?? "no IPv4") · sampling", group: "Interfaces")
+            } + [DetailRow(label: "Connectivity", value: sample.isConnected ? "Local network active" : "No active interface", group: "Privacy", prominence: .primary)]
             return module(name: "Network", symbol: "network", latest: 0.05, value: "warming", detail: "Sampling interfaces", accent: .green, detailRows: rows)
         }
 
@@ -132,7 +132,7 @@ struct SystemCollectors {
             let previous = previousNetwork.interfaces.first { $0.name == interface.name }
             let rxRate = Double(interface.receivedBytes >= (previous?.receivedBytes ?? interface.receivedBytes) ? interface.receivedBytes - (previous?.receivedBytes ?? interface.receivedBytes) : 0) / elapsed
             let txRate = Double(interface.sentBytes >= (previous?.sentBytes ?? interface.sentBytes) ? interface.sentBytes - (previous?.sentBytes ?? interface.sentBytes) : 0) / elapsed
-            rows.append(DetailRow(label: interface.name, value: "\(interface.ipv4 ?? "no IPv4") · ↓ \(formatBytes(rxRate, style: .file))/s · ↑ \(formatBytes(txRate, style: .file))/s"))
+            rows.append(DetailRow(label: interface.name, value: "\(interface.ipv4 ?? "no IPv4") · ↓ \(formatBytes(rxRate, style: .file))/s · ↑ \(formatBytes(txRate, style: .file))/s", group: "Interfaces"))
         }
 
         let receivedDelta = sample.receivedBytes >= previousNetwork.receivedBytes
@@ -145,9 +145,9 @@ struct SystemCollectors {
         let txRate = Double(sentDelta) / elapsed
         let totalRate = rxRate + txRate
         let latest = min(totalRate / 125_000_000, 1)
-        rows.insert(DetailRow(label: "Aggregate", value: "↓ \(formatBytes(rxRate, style: .file))/s · ↑ \(formatBytes(txRate, style: .file))/s"), at: 0)
-        rows.append(DetailRow(label: "Connectivity", value: sample.isConnected ? "Private/local interfaces only" : "Offline or no active IPv4"))
-        rows.append(DetailRow(label: "Public IP", value: "Not queried silently"))
+        rows.insert(DetailRow(label: "Aggregate", value: "↓ \(formatBytes(rxRate, style: .file))/s · ↑ \(formatBytes(txRate, style: .file))/s", group: "Throughput", prominence: .primary), at: 0)
+        rows.append(DetailRow(label: "Connectivity", value: sample.isConnected ? "Private/local interfaces only" : "Offline or no active IPv4", group: "Privacy", prominence: .primary))
+        rows.append(DetailRow(label: "Public IP", value: "Not queried silently", group: "Privacy", prominence: .primary))
 
         return module(
             name: "Network",
@@ -178,7 +178,7 @@ struct SystemCollectors {
         let writeRate = previous.map { Double(activity.writeBytes >= $0.writeBytes ? activity.writeBytes - $0.writeBytes : 0) / elapsed } ?? 0
         let free = max(0, min(1, available / total))
         let volumeRows = volumes.prefix(4).map { volume in
-            DetailRow(label: volume.name, value: "\(formatBytes(Double(volume.available), style: .file)) free of \(formatBytes(Double(volume.total), style: .file))")
+            DetailRow(label: volume.name, value: "\(formatBytes(Double(volume.available), style: .file)) free of \(formatBytes(Double(volume.total), style: .file))", group: "Volumes")
         }
 
         return module(
@@ -189,10 +189,10 @@ struct SystemCollectors {
             detail: "\(Int(free * 100))% available on \(primary?.name ?? "startup volume")",
             accent: .orange,
             detailRows: [
-                DetailRow(label: "Read activity", value: previous == nil ? "sampling" : "\(formatBytes(readRate, style: .file))/s"),
-                DetailRow(label: "Write activity", value: previous == nil ? "sampling" : "\(formatBytes(writeRate, style: .file))/s")
+                DetailRow(label: "Read activity", value: previous == nil ? "sampling" : "\(formatBytes(readRate, style: .file))/s", group: "Activity", prominence: .primary),
+                DetailRow(label: "Write activity", value: previous == nil ? "sampling" : "\(formatBytes(writeRate, style: .file))/s", group: "Activity", prominence: .primary)
             ] + volumeRows + [
-                DetailRow(label: "SMART", value: "Requires supported hardware/privileges")
+                DetailRow(label: "SMART", value: "Requires supported hardware/privileges", group: "Safety", prominence: .muted)
             ]
         )
     }
@@ -211,8 +211,8 @@ struct SystemCollectors {
                 detail: "No internal battery",
                 accent: .mint,
                 detailRows: [
-                    DetailRow(label: "Power source", value: "External"),
-                    DetailRow(label: "Adapter", value: adapter)
+                    DetailRow(label: "Power source", value: "External", group: "Power", prominence: .primary),
+                    DetailRow(label: "Adapter", value: adapter, group: "Power")
                 ]
             )
         }
@@ -234,12 +234,12 @@ struct SystemCollectors {
             detail: charging ? "Charging" : sourceState,
             accent: .mint,
             detailRows: [
-                DetailRow(label: "Charge", value: "\(current) / \(max)"),
-                DetailRow(label: "Time remaining", value: formatPowerMinutes(timeRemaining)),
-                DetailRow(label: "Cycle count", value: cycleCount.map(String.init) ?? "Not exposed"),
-                DetailRow(label: "Condition", value: health),
-                DetailRow(label: "Power source", value: sourceState),
-                DetailRow(label: "Adapter", value: adapter)
+                DetailRow(label: "Charge", value: "\(current) / \(max)", group: "Battery", prominence: .primary),
+                DetailRow(label: "Time remaining", value: formatPowerMinutes(timeRemaining), group: "Battery", prominence: .primary),
+                DetailRow(label: "Cycle count", value: cycleCount.map(String.init) ?? "Not exposed", group: "Health"),
+                DetailRow(label: "Condition", value: health, group: "Health", prominence: .primary),
+                DetailRow(label: "Power source", value: sourceState, group: "Power"),
+                DetailRow(label: "Adapter", value: adapter, group: "Power")
             ]
         )
     }
@@ -261,9 +261,9 @@ struct SystemCollectors {
             detail: "Configured location: Shanghai",
             accent: .cyan,
             detailRows: [
-                DetailRow(label: "Provider", value: "Open-Meteo"),
-                DetailRow(label: "Location", value: "Shanghai (configured)"),
-                DetailRow(label: "Privacy", value: "No current-location permission")
+                DetailRow(label: "Provider", value: "Open-Meteo", group: "Privacy", prominence: .muted),
+                DetailRow(label: "Location", value: "Shanghai (configured)", group: "Weather", prominence: .primary),
+                DetailRow(label: "Privacy", value: "No current-location permission", group: "Privacy", prominence: .primary)
             ]
         )
     }
@@ -284,12 +284,12 @@ struct SystemCollectors {
             detail: calendar.timeZone.identifier,
             accent: .blue,
             detailRows: [
-                DetailRow(label: "Date", value: now.formatted(date: .complete, time: .omitted)),
-                DetailRow(label: "Week", value: "Week \(week) · day \(dayOfYear)"),
-                DetailRow(label: "Time zone", value: calendar.timeZone.abbreviation() ?? "Local"),
-                DetailRow(label: "Shanghai", value: worldClock(identifier: "Asia/Shanghai")),
-                DetailRow(label: "London", value: worldClock(identifier: "Europe/London")),
-                DetailRow(label: "New York", value: worldClock(identifier: "America/New_York"))
+                DetailRow(label: "Date", value: now.formatted(date: .complete, time: .omitted), group: "Local", prominence: .primary),
+                DetailRow(label: "Week", value: "Week \(week) · day \(dayOfYear)", group: "Local"),
+                DetailRow(label: "Time zone", value: calendar.timeZone.abbreviation() ?? "Local", group: "Local", prominence: .primary),
+                DetailRow(label: "Shanghai", value: worldClock(identifier: "Asia/Shanghai"), group: "World"),
+                DetailRow(label: "London", value: worldClock(identifier: "Europe/London"), group: "World"),
+                DetailRow(label: "New York", value: worldClock(identifier: "America/New_York"), group: "World")
             ]
         )
     }
@@ -298,7 +298,7 @@ struct SystemCollectors {
         let runningApps = NSWorkspace.shared.runningApplications.filter { $0.activationPolicy == .regular }
         let topRows = processHistory.update(with: processSamples())
         let foregroundRows = runningApps.prefix(4).map { app in
-            DetailRow(label: "App: \(app.localizedName ?? "App")", value: app.isActive ? "Active" : "Running")
+            DetailRow(label: "App: \(app.localizedName ?? "App")", value: app.isActive ? "Active" : "Running", group: "Foreground")
         }
         let count = runningApps.count
         return module(
@@ -317,7 +317,7 @@ struct SystemCollectors {
         var processorCount: natural_t = 0
         var infoCount: mach_msg_type_number_t = 0
         let result = host_processor_info(mach_host_self(), PROCESSOR_CPU_LOAD_INFO, &processorCount, &processorInfo, &infoCount)
-        guard result == KERN_SUCCESS, let processorInfo else { return [DetailRow(label: "Per-core", value: "Unavailable from Mach")] }
+        guard result == KERN_SUCCESS, let processorInfo else { return [DetailRow(label: "Per-core", value: "Unavailable from Mach", group: "Per-core", prominence: .muted)] }
         defer {
             let byteCount = vm_size_t(Int(infoCount) * MemoryLayout<integer_t>.stride)
             vm_deallocate(mach_task_self_, vm_address_t(bitPattern: processorInfo), byteCount)
@@ -339,7 +339,7 @@ struct SystemCollectors {
             let totalDelta = Double(max(tick.total &- previous.total, 1))
             let idleDelta = Double(tick.idle &- previous.idle)
             let usage = max(0, min(1, 1 - idleDelta / totalDelta))
-            rows.append(DetailRow(label: "Core \(index + 1)", value: "\(Int(usage * 100))%"))
+            rows.append(DetailRow(label: "Core \(index + 1)", value: "\(Int(usage * 100))%", group: "Per-core"))
         }
         previousCoreTicks = nextTicks
         return rows
@@ -492,11 +492,11 @@ private struct ProcessHistory {
             .sorted { averageCPU(for: $0) > averageCPU(for: $1) }
             .prefix(4)
             .map { row(for: $0, section: "Recent Avg/Peak") }
-        return [DetailRow(label: "Table", value: "Fixed sortable views: Top CPU, Top Memory, Recent Average/Peak")] + topCPU + topMemory + recent
+        return [DetailRow(label: "Table", value: "Fixed sortable views: Top CPU, Top Memory, Recent Average/Peak", group: "Process", prominence: .muted)] + topCPU + topMemory + recent
     }
 
     private func row(for sample: ProcessSample, section: String) -> DetailRow {
-        DetailRow(label: "\(section): \(sample.name)", value: String(format: "PID %d · CPU %.1f%% · MEM %.1f%% · avg %.1f%% · peak %.1f%%", sample.pid, sample.cpu, sample.memory, averageCPU(for: sample), peakCPU(for: sample)))
+        DetailRow(label: "\(section): \(sample.name)", value: String(format: "PID %d · CPU %.1f%% · MEM %.1f%% · avg %.1f%% · peak %.1f%%", sample.pid, sample.cpu, sample.memory, averageCPU(for: sample), peakCPU(for: sample)), group: section, prominence: section == "Top CPU" ? .primary : .normal)
     }
 
     private func averageCPU(for sample: ProcessSample) -> Double {

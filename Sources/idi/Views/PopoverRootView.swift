@@ -1,232 +1,269 @@
+import AppKit
 import SwiftUI
 
 struct PopoverRootView: View {
     @EnvironmentObject private var telemetryStore: TelemetryStore
     @EnvironmentObject private var preferences: PreferencesModel
+    @State private var selectedModuleName = "CPU"
+    @State private var copied = false
 
     let showPreferences: () -> Void
     let togglePause: () -> Void
     let quit: () -> Void
 
+    private var visibleModules: [TelemetryModule] {
+        telemetryStore.visibleModules.sorted { $0.displayOrder < $1.displayOrder }
+    }
+
+    private var selectedModule: TelemetryModule? {
+        if let selected = visibleModules.first(where: { $0.name == selectedModuleName }) {
+            return selected
+        }
+        return visibleModules.first
+    }
+
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 10) {
             header
-
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 10) {
-                    ForEach(telemetryStore.visibleModules) { module in
-                        ModuleCard(module: module, density: preferences.density)
-                    }
-                }
-                .padding(.vertical, 2)
+            HStack(spacing: 12) {
+                moduleRail
+                    .frame(width: 205)
+                detailStage
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-
             footer
         }
         .padding(14)
-        .frame(width: 420, height: 620)
+        .frame(width: 780, height: 640)
         .background(background)
+        .onAppear(perform: repairSelection)
+        .onChange(of: telemetryStore.visibleModules.map(\.name)) { _ in repairSelection() }
     }
 
     private var header: some View {
-        HStack(alignment: .center, spacing: 12) {
+        HStack(spacing: 14) {
             ZStack {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(.blue.opacity(0.16))
-                Image(systemName: "waveform.path.ecg")
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(.blue)
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(LinearGradient(colors: [.cyan.opacity(0.26), .blue.opacity(0.12)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                Image(systemName: "waveform.path.ecg.rectangle")
+                    .font(.title2.weight(.semibold))
+                    .foregroundStyle(.cyan)
             }
-            .frame(width: 42, height: 42)
+            .frame(width: 46, height: 46)
 
-            VStack(alignment: .leading, spacing: 3) {
-                Text("idi")
+            VStack(alignment: .leading, spacing: 2) {
+                Text("idi cockpit")
                     .font(.system(size: 24, weight: .black, design: .rounded))
-                Text("Compact Mac telemetry")
+                    .foregroundStyle(.white)
+                Text("Private local telemetry · industrial command surface")
                     .font(.caption.weight(.medium))
-                    .foregroundStyle(.secondary)
-                Text("Updated \(telemetryStore.snapshot.updatedAt.formatted(date: .omitted, time: .standard))")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(.white.opacity(0.62))
             }
 
             Spacer()
 
-            VStack(alignment: .trailing, spacing: 4) {
-                Text(preferences.isPaused ? "Paused" : telemetryStore.snapshot.healthState.rawValue)
-                    .font(.caption.weight(.bold))
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background((preferences.isPaused ? Color.orange : telemetryStore.snapshot.healthState.color).opacity(0.18))
-                    .foregroundStyle(preferences.isPaused ? Color.orange : telemetryStore.snapshot.healthState.color)
-                    .clipShape(Capsule())
-                Text("\(telemetryStore.visibleModules.count) modules")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+            HStack(spacing: 10) {
+                statusPill(title: preferences.isPaused ? "Paused" : telemetryStore.snapshot.healthState.rawValue, color: preferences.isPaused ? .orange : telemetryStore.snapshot.healthState.color)
+                statusPill(title: "\(visibleModules.count) online", color: .cyan)
+                Text(telemetryStore.snapshot.updatedAt.formatted(date: .omitted, time: .standard))
+                    .font(.system(.caption, design: .monospaced).weight(.semibold))
+                    .foregroundStyle(.white.opacity(0.72))
             }
         }
         .padding(12)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .background(glassPanel(cornerRadius: 20))
+    }
+
+    private var moduleRail: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("MODULE RAIL")
+                .font(.system(.caption2, design: .monospaced).weight(.bold))
+                .foregroundStyle(.white.opacity(0.42))
+                .padding(.horizontal, 8)
+
+            if visibleModules.isEmpty {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("No modules visible")
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                    Text("Enable modules in Preferences to rebuild the cockpit rail.")
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.58))
+                    Button("Preferences", action: showPreferences)
+                }
+                .padding(12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(glassPanel(cornerRadius: 16))
+            } else {
+                ForEach(visibleModules) { module in
+                    Button {
+                        selectedModuleName = module.name
+                    } label: {
+                        RailRow(module: module, isSelected: module.name == selectedModule?.name)
+                    }
+                    .buttonStyle(.plain)
+                }
+                Spacer(minLength: 0)
+            }
+        }
+        .padding(10)
+        .background(glassPanel(cornerRadius: 18))
+    }
+
+    @ViewBuilder
+    private var detailStage: some View {
+        if let module = selectedModule {
+            VStack(alignment: .leading, spacing: 10) {
+                hero(for: module)
+                DenseChart(samples: module.samples, color: module.accent.color)
+                    .frame(height: 150)
+                    .background(Color.black.opacity(0.24), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(module.accent.color.opacity(0.18), lineWidth: 1))
+                summaryTiles(for: module)
+                detailRows(for: module)
+            }
+            .padding(14)
+            .background(glassPanel(cornerRadius: 22))
+        } else {
+            VStack(spacing: 14) {
+                Image(systemName: "switch.2")
+                    .font(.largeTitle)
+                    .foregroundStyle(.cyan)
+                Text("Cockpit offline")
+                    .font(.title2.weight(.bold))
+                    .foregroundStyle(.white)
+                Text("No telemetry modules are enabled for the popover.")
+                    .foregroundStyle(.white.opacity(0.62))
+                Button("Open Preferences", action: showPreferences)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(glassPanel(cornerRadius: 22))
+        }
+    }
+
+    private func hero(for module: TelemetryModule) -> some View {
+        HStack(alignment: .top, spacing: 14) {
+            Image(systemName: module.symbol)
+                .font(.system(size: 34, weight: .semibold))
+                .foregroundStyle(module.accent.color)
+                .frame(width: 50, height: 50)
+                .background(module.accent.color.opacity(0.16), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(module.name.uppercased())
+                    .font(.system(.caption, design: .monospaced).weight(.black))
+                    .foregroundStyle(module.accent.color)
+                Text(module.value)
+                    .font(.system(size: 36, weight: .black, design: .rounded))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.58)
+                Text(module.detail)
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.white.opacity(0.62))
+                    .lineLimit(1)
+            }
+
+            Spacer()
+
+            VStack(alignment: .trailing, spacing: 8) {
+                statusPill(title: module.healthState.rawValue, color: module.healthState.color)
+                Text("current \(percent(module.latestSample))")
+                    .font(.system(.caption2, design: .monospaced).weight(.semibold))
+                    .foregroundStyle(.white.opacity(0.52))
+            }
+        }
+    }
+
+    private func summaryTiles(for module: TelemetryModule) -> some View {
+        HStack(spacing: 8) {
+            MetricTile(title: "MIN", value: percent(module.samples.min() ?? 0), color: module.accent.color)
+            MetricTile(title: "MAX", value: percent(module.samples.max() ?? 0), color: module.accent.color)
+            MetricTile(title: "NOW", value: percent(module.latestSample), color: module.accent.color)
+            ForEach(module.summaryRows.prefix(2)) { row in
+                MetricTile(title: row.label.uppercased(), value: row.value, color: module.accent.color)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func detailRows(for module: TelemetryModule) -> some View {
+        if module.name == "Apps" {
+            ProcessTable(rows: module.detailRows)
+        } else {
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 10) {
+                    ForEach(module.groupedDetailRows, id: \.0) { group, rows in
+                        VStack(alignment: .leading, spacing: 5) {
+                            Text(group.uppercased())
+                                .font(.system(.caption2, design: .monospaced).weight(.black))
+                                .foregroundStyle(module.accent.color.opacity(0.85))
+                            ForEach(rows) { row in
+                                DetailLine(row: row)
+                            }
+                        }
+                    }
+                }
+                .padding(.trailing, 4)
+            }
+        }
     }
 
     private var footer: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 8) {
             Button("Preferences", action: showPreferences)
+            Button("Refresh Now") { telemetryStore.refreshNow() }
             Button(preferences.isPaused ? "Resume" : "Pause", action: togglePause)
+            Button(copied ? "Copied" : "Copy Summary") { copySummary() }
             Spacer()
+            Text("No SMC writes · no fan-control writes · Weather opt-in")
+                .font(.system(.caption2, design: .monospaced).weight(.semibold))
+                .foregroundStyle(.white.opacity(0.42))
             Button("Quit", action: quit)
                 .keyboardShortcut("q")
         }
         .buttonStyle(.bordered)
+        .tint(.cyan)
+        .padding(10)
+        .background(glassPanel(cornerRadius: 18))
     }
 
     private var background: some View {
-        LinearGradient(
-            colors: [
-                Color(nsColor: .windowBackgroundColor),
-                Color.black.opacity(0.12)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
-}
-
-struct ModuleCard: View {
-    let module: TelemetryModule
-    let density: PreferencesModel.Density
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: density == .compact ? 8 : 10) {
-            HStack(spacing: 9) {
-                Image(systemName: module.symbol)
-                    .font(.headline)
-                    .foregroundStyle(module.accent.color)
-                    .frame(width: 22)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(module.name)
-                        .font(.headline)
-                    Text(module.detail)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-                Spacer()
-                Text(module.value)
-                    .font(.system(size: density == .compact ? 18 : 21, weight: .semibold, design: .rounded))
-                Circle()
-                    .fill(module.healthState.color)
-                    .frame(width: 7, height: 7)
-            }
-
-            VStack(alignment: .leading, spacing: 5) {
-                Sparkline(samples: module.samples, color: module.accent.color)
-                    .frame(height: density == .compact ? 24 : 32)
-                if density != .compact {
-                    legend
-                }
-            }
-
-            if density != .compact {
-                detailPresentation
-            }
-        }
-        .padding(density == .compact ? 11 : 13)
-        .frame(maxWidth: .infinity, minHeight: density == .compact ? 104 : 136, alignment: .topLeading)
-        .background(.thinMaterial)
-        .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(module.accent.color.opacity(0.16), lineWidth: 1)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-    }
-
-    private var legend: some View {
-        HStack(spacing: 8) {
-            Text("Graph")
-                .font(.caption2.weight(.bold))
-                .foregroundStyle(module.accent.color)
-            Text("min \(percent(module.samples.min() ?? 0))")
-            Text("max \(percent(module.samples.max() ?? 0))")
-            Text("current \(percent(module.latestSample))")
-            Spacer()
-        }
-        .font(.caption2)
-        .foregroundStyle(.secondary)
-    }
-
-    private var detailPresentation: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 6) {
-                Text(module.name == "Apps" ? "Process table" : "Detail groups")
-                    .font(.caption2.weight(.bold))
-                    .foregroundStyle(module.accent.color)
-                    .padding(.horizontal, 7)
-                    .padding(.vertical, 3)
-                    .background(module.accent.color.opacity(0.12), in: Capsule())
-                Text("\(module.detailRows.count) rows")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-                Spacer()
-            }
-
-            if module.name == "Apps" {
-                processRows
-            } else {
-                groupedRows
-            }
+        ZStack {
+            LinearGradient(colors: [Color(red: 0.025, green: 0.034, blue: 0.048), Color(red: 0.055, green: 0.065, blue: 0.085), Color.black], startPoint: .topLeading, endPoint: .bottomTrailing)
+            RadialGradient(colors: [.cyan.opacity(0.16), .clear], center: .topLeading, startRadius: 30, endRadius: 520)
+            RadialGradient(colors: [.blue.opacity(0.12), .clear], center: .bottomTrailing, startRadius: 30, endRadius: 460)
         }
     }
 
-    private var groupedRows: some View {
-        VStack(spacing: 5) {
-            ForEach(Array(visibleRows.enumerated()), id: \.element.id) { index, row in
-                if index > 0, index % 4 == 0 {
-                    Divider().opacity(0.35)
-                }
-                HStack(alignment: .firstTextBaseline) {
-                    Text(row.label)
-                        .foregroundStyle(.secondary)
-                    Spacer(minLength: 10)
-                    Text(row.value)
-                        .fontWeight(.medium)
-                        .multilineTextAlignment(.trailing)
-                }
-                .font(.caption2)
-            }
-        }
+    private func statusPill(title: String, color: Color) -> some View {
+        Text(title)
+            .font(.system(.caption, design: .monospaced).weight(.bold))
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(color.opacity(0.16), in: Capsule())
+            .foregroundStyle(color)
     }
 
-    private var processRows: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text("Sort view")
-                Spacer()
-                Text("PID / CPU / MEM / Avg / Peak")
-            }
-            .font(.caption2.weight(.bold))
-            .foregroundStyle(.secondary)
-            .padding(.vertical, 4)
-
-            ForEach(visibleRows) { row in
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(row.label)
-                        .lineLimit(1)
-                    Spacer(minLength: 8)
-                    Text(row.value)
-                        .font(.system(.caption2, design: .monospaced))
-                        .lineLimit(1)
-                        .multilineTextAlignment(.trailing)
-                }
-                .font(.caption2)
-                .padding(.vertical, 3)
-                .overlay(alignment: .bottom) { Divider().opacity(0.25) }
-            }
-        }
+    private func glassPanel(cornerRadius: CGFloat) -> some View {
+        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+            .fill(.ultraThinMaterial.opacity(0.55))
+            .overlay(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous).stroke(.white.opacity(0.08), lineWidth: 1))
+            .shadow(color: .black.opacity(0.32), radius: 18, y: 12)
     }
 
-    private var visibleRows: [DetailRow] {
-        Array(module.detailRows.prefix(density == .detailed ? 22 : 14))
+    private func repairSelection() {
+        guard !visibleModules.contains(where: { $0.name == selectedModuleName }) else { return }
+        selectedModuleName = visibleModules.first?.name ?? ""
+    }
+
+    private func copySummary() {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(TelemetrySnapshot(modules: visibleModules, updatedAt: telemetryStore.snapshot.updatedAt).summaryText, forType: .string)
+        copied = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.4) {
+            copied = false
+        }
     }
 
     private func percent(_ value: Double) -> String {
@@ -234,28 +271,194 @@ struct ModuleCard: View {
     }
 }
 
-struct Sparkline: View {
+private struct RailRow: View {
+    let module: TelemetryModule
+    let isSelected: Bool
+
+    var body: some View {
+        HStack(spacing: 9) {
+            Circle()
+                .fill(module.healthState.color)
+                .frame(width: 7, height: 7)
+            Image(systemName: module.symbol)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(module.accent.color)
+                .frame(width: 18)
+            VStack(alignment: .leading, spacing: 1) {
+                HStack(spacing: 5) {
+                    Text(module.shortCode)
+                        .font(.system(.caption2, design: .monospaced).weight(.black))
+                    Text(module.name)
+                        .font(.caption.weight(.semibold))
+                }
+                Text(module.value)
+                    .font(.system(.caption2, design: .monospaced).weight(.semibold))
+                    .foregroundStyle(.white.opacity(0.62))
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 0)
+        }
+        .foregroundStyle(isSelected ? .white : .white.opacity(0.76))
+        .padding(.horizontal, 9)
+        .padding(.vertical, 8)
+        .background(isSelected ? module.accent.color.opacity(0.18) : Color.white.opacity(0.035), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(alignment: .leading) {
+            RoundedRectangle(cornerRadius: 2)
+                .fill(isSelected ? module.accent.color : .clear)
+                .frame(width: 3)
+                .padding(.vertical, 8)
+        }
+    }
+}
+
+private struct DenseChart: View {
     let samples: [Double]
     let color: Color
 
     var body: some View {
         GeometryReader { proxy in
-            Path { path in
-                guard let first = samples.first else { return }
-                let width = proxy.size.width
-                let height = proxy.size.height
-                let step = samples.count > 1 ? width / CGFloat(samples.count - 1) : 0
-
-                path.move(to: CGPoint(x: 0, y: height - CGFloat(first) * height))
-                for index in samples.indices.dropFirst() {
-                    let point = CGPoint(
-                        x: CGFloat(index) * step,
-                        y: height - CGFloat(samples[index]) * height
-                    )
-                    path.addLine(to: point)
+            let points = chartPoints(in: proxy.size)
+            ZStack {
+                grid(in: proxy.size)
+                if points.count > 1 {
+                    area(points: points, size: proxy.size)
+                        .fill(LinearGradient(colors: [color.opacity(0.32), color.opacity(0.03)], startPoint: .top, endPoint: .bottom))
+                    line(points: points)
+                        .stroke(color, style: StrokeStyle(lineWidth: 2.2, lineCap: .round, lineJoin: .round))
+                    if let last = points.last {
+                        Circle()
+                            .fill(color)
+                            .frame(width: 8, height: 8)
+                            .position(last)
+                    }
                 }
             }
-            .stroke(color, style: StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
+            .padding(10)
+        }
+    }
+
+    private func chartPoints(in size: CGSize) -> [CGPoint] {
+        guard !samples.isEmpty else { return [] }
+        let inset: CGFloat = 12
+        let width = max(size.width - inset * 2, 1)
+        let height = max(size.height - inset * 2, 1)
+        let step = samples.count > 1 ? width / CGFloat(samples.count - 1) : 0
+        return samples.enumerated().map { index, sample in
+            CGPoint(x: inset + CGFloat(index) * step, y: inset + height - CGFloat(max(0, min(1, sample))) * height)
+        }
+    }
+
+    private func grid(in size: CGSize) -> some View {
+        Path { path in
+            for row in 0...4 {
+                let y = CGFloat(row) * size.height / 4
+                path.move(to: CGPoint(x: 0, y: y))
+                path.addLine(to: CGPoint(x: size.width, y: y))
+            }
+            for column in 0...6 {
+                let x = CGFloat(column) * size.width / 6
+                path.move(to: CGPoint(x: x, y: 0))
+                path.addLine(to: CGPoint(x: x, y: size.height))
+            }
+        }
+        .stroke(.white.opacity(0.07), lineWidth: 1)
+    }
+
+    private func line(points: [CGPoint]) -> Path {
+        Path { path in
+            guard let first = points.first else { return }
+            path.move(to: first)
+            points.dropFirst().forEach { path.addLine(to: $0) }
+        }
+    }
+
+    private func area(points: [CGPoint], size: CGSize) -> Path {
+        Path { path in
+            guard let first = points.first, let last = points.last else { return }
+            path.move(to: CGPoint(x: first.x, y: size.height - 12))
+            path.addLine(to: first)
+            points.dropFirst().forEach { path.addLine(to: $0) }
+            path.addLine(to: CGPoint(x: last.x, y: size.height - 12))
+            path.closeSubpath()
+        }
+    }
+}
+
+private struct MetricTile: View {
+    let title: String
+    let value: String
+    let color: Color
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(title)
+                .font(.system(size: 9, weight: .black, design: .monospaced))
+                .foregroundStyle(color.opacity(0.9))
+                .lineLimit(1)
+            Text(value)
+                .font(.system(.caption, design: .monospaced).weight(.bold))
+                .foregroundStyle(.white.opacity(0.88))
+                .lineLimit(1)
+                .minimumScaleFactor(0.55)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(8)
+        .background(Color.white.opacity(0.045), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+}
+
+private struct DetailLine: View {
+    let row: DetailRow
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            Text(row.label)
+                .foregroundStyle(row.prominence == .muted ? .white.opacity(0.38) : .white.opacity(0.58))
+            Spacer(minLength: 8)
+            Text(row.value)
+                .fontWeight(row.prominence == .primary ? .bold : .medium)
+                .foregroundStyle(row.prominence == .muted ? .white.opacity(0.48) : .white.opacity(0.86))
+                .multilineTextAlignment(.trailing)
+                .lineLimit(2)
+        }
+        .font(.caption)
+        .padding(.vertical, 4)
+        .overlay(alignment: .bottom) { Divider().opacity(0.16) }
+    }
+}
+
+private struct ProcessTable: View {
+    let rows: [DetailRow]
+
+    var body: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 0) {
+                HStack {
+                    Text("PROCESS")
+                    Spacer()
+                    Text("PID / CPU / MEM / AVG / PEAK")
+                }
+                .font(.system(.caption2, design: .monospaced).weight(.black))
+                .foregroundStyle(.purple.opacity(0.9))
+                .padding(.vertical, 6)
+
+                ForEach(rows.prefix(24)) { row in
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text(row.label)
+                            .lineLimit(1)
+                            .foregroundStyle(row.prominence == .muted ? .white.opacity(0.5) : .white.opacity(0.82))
+                        Spacer(minLength: 8)
+                        Text(row.value)
+                            .font(.system(.caption2, design: .monospaced).weight(.semibold))
+                            .lineLimit(1)
+                            .foregroundStyle(.white.opacity(0.72))
+                            .multilineTextAlignment(.trailing)
+                    }
+                    .font(.caption)
+                    .padding(.vertical, 5)
+                    .overlay(alignment: .bottom) { Divider().opacity(0.15) }
+                }
+            }
         }
     }
 }
@@ -263,22 +466,14 @@ struct Sparkline: View {
 extension ModuleAccent {
     var color: Color {
         switch self {
-        case .blue:
-            return .blue
-        case .purple:
-            return .purple
-        case .green:
-            return .green
-        case .orange:
-            return .orange
-        case .mint:
-            return .mint
-        case .pink:
-            return .pink
-        case .yellow:
-            return .yellow
-        case .cyan:
-            return .cyan
+        case .blue: return .blue
+        case .purple: return .purple
+        case .green: return .green
+        case .orange: return .orange
+        case .mint: return .mint
+        case .pink: return .pink
+        case .yellow: return .yellow
+        case .cyan: return .cyan
         }
     }
 }
@@ -286,12 +481,9 @@ extension ModuleAccent {
 extension HealthState {
     var color: Color {
         switch self {
-        case .normal:
-            return .green
-        case .warning:
-            return .orange
-        case .critical:
-            return .red
+        case .normal: return .green
+        case .warning: return .orange
+        case .critical: return .red
         }
     }
 }

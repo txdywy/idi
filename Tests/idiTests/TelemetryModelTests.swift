@@ -61,4 +61,25 @@ final class TelemetryModelTests: XCTestCase {
         let module = TelemetryModule(name: "GPU", symbol: "display", value: "available", detail: "safe", accent: .pink, samples: [], healthState: .normal, detailRows: [])
         XCTAssertEqual(module.latestSample, 0)
     }
+
+    func testModuleIDIsStableName() {
+        let module = TelemetryModule(name: "CPU", symbol: "cpu", value: "20%", detail: "ok", accent: .blue, samples: [0.2], healthState: .normal, detailRows: [])
+        XCTAssertEqual(module.id, "CPU")
+    }
+
+    func testSnapshotSummaryTextIncludesVisibleTelemetry() {
+        let snapshot = TelemetrySnapshot(
+            modules: [
+                TelemetryModule(name: "CPU", symbol: "cpu", value: "20%", detail: "ok", accent: .blue, samples: [0.2], healthState: .normal, detailRows: []),
+                TelemetryModule(name: "Network", symbol: "network", value: "4 MB/s", detail: "Private/local interfaces only", accent: .green, samples: [0.1], healthState: .warning, detailRows: [])
+            ],
+            updatedAt: Date(timeIntervalSince1970: 0)
+        )
+
+        let summary = snapshot.summaryText
+        XCTAssertTrue(summary.contains("idi telemetry summary"))
+        XCTAssertTrue(summary.contains("Health: Warning"))
+        XCTAssertTrue(summary.contains("CPU CPU: 20% — ok [Normal]"))
+        XCTAssertTrue(summary.contains("NET Network: 4 MB/s — Private/local interfaces only [Warning]"))
+    }
 }

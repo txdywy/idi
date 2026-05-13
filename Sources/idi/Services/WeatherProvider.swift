@@ -40,18 +40,18 @@ actor WeatherProvider {
         let precipitationChance = response.daily?.precipitationProbabilityMax.first
 
         var rows = [
-            DetailRow(label: "Location", value: "Shanghai (configured)"),
-            DetailRow(label: "Humidity", value: "\(humidity)%"),
-            DetailRow(label: "Wind", value: "\(wind) km/h"),
-            DetailRow(label: "Precip chance", value: precipitationChance.map { "\($0)% today" } ?? "Not exposed"),
-            DetailRow(label: "Precip now", value: String(format: "%.1f mm", current.precipitation ?? 0)),
-            DetailRow(label: "Pressure", value: current.surfacePressure.map { String(format: "%.0f hPa", $0) } ?? "Not exposed"),
-            DetailRow(label: "Visibility", value: current.visibility.map { String(format: "%.1f km", $0 / 1_000) } ?? "Not exposed"),
-            DetailRow(label: "UV", value: current.uvIndex.map { String(format: "%.1f", $0) } ?? response.daily?.uvIndexMax.first.map { String(format: "%.1f max", $0) } ?? "Not exposed"),
-            DetailRow(label: "Feels like", value: current.apparentTemperature.map { "\(Int($0.rounded()))°C" } ?? "Not exposed")
+            DetailRow(label: "Location", value: "Shanghai (configured)", group: "Weather", prominence: .primary),
+            DetailRow(label: "Humidity", value: "\(humidity)%", group: "Current", prominence: .primary),
+            DetailRow(label: "Wind", value: "\(wind) km/h", group: "Current"),
+            DetailRow(label: "Precip chance", value: precipitationChance.map { "\($0)% today" } ?? "Not exposed", group: "Current"),
+            DetailRow(label: "Precip now", value: String(format: "%.1f mm", current.precipitation ?? 0), group: "Current"),
+            DetailRow(label: "Pressure", value: current.surfacePressure.map { String(format: "%.0f hPa", $0) } ?? "Not exposed", group: "Atmosphere"),
+            DetailRow(label: "Visibility", value: current.visibility.map { String(format: "%.1f km", $0 / 1_000) } ?? "Not exposed", group: "Atmosphere"),
+            DetailRow(label: "UV", value: current.uvIndex.map { String(format: "%.1f", $0) } ?? response.daily?.uvIndexMax.first.map { String(format: "%.1f max", $0) } ?? "Not exposed", group: "Atmosphere"),
+            DetailRow(label: "Feels like", value: current.apparentTemperature.map { "\(Int($0.rounded()))°C" } ?? "Not exposed", group: "Current", prominence: .primary)
         ]
         rows.append(contentsOf: forecastRows(from: response.daily))
-        rows.append(DetailRow(label: "Provider", value: "Open-Meteo when Weather is enabled"))
+        rows.append(DetailRow(label: "Provider", value: "Open-Meteo when Weather is enabled", group: "Privacy", prominence: .muted))
 
         return TelemetryModule(
             name: "Weather",
@@ -75,7 +75,8 @@ actor WeatherProvider {
             let rain = daily.precipitationProbabilityMax.indices.contains(index) ? " · rain \(daily.precipitationProbabilityMax[index])%" : ""
             return DetailRow(
                 label: label,
-                value: "\(Int(daily.temperature2mMin[index].rounded()))–\(Int(daily.temperature2mMax[index].rounded()))°C · \(daily.weatherCode[index].description)\(rain)"
+                value: "\(Int(daily.temperature2mMin[index].rounded()))–\(Int(daily.temperature2mMax[index].rounded()))°C · \(daily.weatherCode[index].description)\(rain)",
+                group: "Forecast"
             )
         }
     }
@@ -99,10 +100,10 @@ actor WeatherProvider {
             samples: Array(repeating: 0.44, count: 18),
             healthState: .normal,
             detailRows: [
-                DetailRow(label: "Location", value: "Shanghai (configured)"),
-                DetailRow(label: "Provider", value: "Open-Meteo when Weather is enabled"),
-                DetailRow(label: "Cache", value: cachedModule == nil ? "Empty" : "Expired"),
-                DetailRow(label: "Privacy", value: "Disabled module makes no weather request")
+                DetailRow(label: "Location", value: "Shanghai (configured)", group: "Weather", prominence: .primary),
+                DetailRow(label: "Provider", value: "Open-Meteo when Weather is enabled", group: "Privacy", prominence: .muted),
+                DetailRow(label: "Cache", value: cachedModule == nil ? "Empty" : "Expired", group: "Privacy"),
+                DetailRow(label: "Privacy", value: "Disabled module makes no weather request", group: "Privacy", prominence: .primary)
             ]
         )
     }

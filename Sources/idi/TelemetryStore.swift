@@ -34,6 +34,10 @@ final class TelemetryStore: ObservableObject {
         timer = nil
     }
 
+    func refreshNow() {
+        tick()
+    }
+
     var statusTitle: String {
         guard let cpu = snapshot.modules.first(where: { $0.name == "CPU" }),
               let memory = snapshot.modules.first(where: { $0.name == "Memory" }) else {

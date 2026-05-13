@@ -14,6 +14,17 @@ struct TelemetrySnapshot {
         return .normal
     }
 
+    var summaryText: String {
+        let updated = updatedAt.formatted(date: .abbreviated, time: .standard)
+        let rows = modules
+            .sorted { $0.displayOrder < $1.displayOrder }
+            .map { module in
+                "\(module.shortCode) \(module.name): \(module.value) — \(module.detail) [\(module.healthState.rawValue)]"
+            }
+            .joined(separator: "\n")
+        return "idi telemetry summary\nUpdated: \(updated)\nHealth: \(healthState.rawValue)\n\(rows)"
+    }
+
     static let mock = TelemetrySnapshot(
         modules: [
             TelemetryModule(name: "CPU", symbol: "cpu", value: "24%", detail: "8 cores active", accent: .blue, samples: [0.18, 0.23, 0.21, 0.27, 0.24, 0.31, 0.28, 0.24], healthState: .normal, detailRows: []),
@@ -27,7 +38,7 @@ struct TelemetrySnapshot {
 }
 
 struct TelemetryModule: Identifiable {
-    let id = UUID()
+    var id: String { name }
     var name: String
     var symbol: String
     var value: String
@@ -46,6 +57,14 @@ struct DetailRow: Identifiable {
     let id = UUID()
     var label: String
     var value: String
+    var group: String = "Overview"
+    var prominence: DetailRowProminence = .normal
+}
+
+enum DetailRowProminence {
+    case normal
+    case primary
+    case muted
 }
 
 enum HealthState: String {
@@ -63,4 +82,51 @@ enum ModuleAccent {
     case pink
     case yellow
     case cyan
+}
+
+extension TelemetryModule {
+    var shortCode: String {
+        switch name {
+        case "Battery": return "BAT"
+        case "CPU": return "CPU"
+        case "Memory": return "MEM"
+        case "Disk": return "DSK"
+        case "Network": return "NET"
+        case "GPU": return "GPU"
+        case "Sensors": return "SNS"
+        case "Apps": return "APP"
+        case "Time": return "CLK"
+        case "Weather": return "WTH"
+        default: return String(name.prefix(3)).uppercased()
+        }
+    }
+
+    var displayOrder: Int {
+        switch name {
+        case "Battery": return 0
+        case "CPU": return 1
+        case "Memory": return 2
+        case "Disk": return 3
+        case "Network": return 4
+        case "GPU": return 5
+        case "Sensors": return 6
+        case "Apps": return 7
+        case "Time": return 8
+        case "Weather": return 9
+        default: return 99
+        }
+    }
+
+    var summaryRows: [DetailRow] {
+        let primary = detailRows.filter { $0.prominence == .primary }
+        return Array((primary.isEmpty ? detailRows : primary).prefix(4))
+    }
+
+    var groupedDetailRows: [(String, [DetailRow])] {
+        let groups = Dictionary(grouping: detailRows, by: \DetailRow.group)
+        let order = detailRows.map(\DetailRow.group)
+        return groups.keys.sorted { lhs, rhs in
+            (order.firstIndex(of: lhs) ?? Int.max) < (order.firstIndex(of: rhs) ?? Int.max)
+        }.map { ($0, groups[$0] ?? []) }
+    }
 }
